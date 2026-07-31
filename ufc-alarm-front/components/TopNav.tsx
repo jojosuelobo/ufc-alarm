@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { SafeUser } from "@/lib/auth/dal";
+import UserMenuButton from "./UserMenuButton";
 
 const LINKS = [
   { href: "/", label: "Próximo evento" },
   { href: "/eventos", label: "Eventos" },
 ];
 
-export default function TopNav() {
+export default function TopNav({ user }: { user: SafeUser | null }) {
   const pathname = usePathname();
 
   return (
@@ -33,6 +35,16 @@ export default function TopNav() {
               </Link>
             );
           })}
+          {user ? (
+            <UserMenuButton />
+          ) : (
+            <Link
+              href="/login"
+              className="font-heading text-base uppercase tracking-wide text-muted transition hover:text-foreground"
+            >
+              Login
+            </Link>
+          )}
         </nav>
       </div>
     </header>

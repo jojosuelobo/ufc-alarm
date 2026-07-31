@@ -4,6 +4,9 @@ import FightCard from "./FightCard";
 
 interface EventDetailViewProps {
   event: UpcomingEvent;
+  isLoggedIn: boolean;
+  hasPhone: boolean;
+  activeAlarmBoutIds: Set<string>;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -14,7 +17,22 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function EventDetailView({ event }: EventDetailViewProps) {
+export default function EventDetailView({
+  event,
+  isLoggedIn,
+  hasPhone,
+  activeAlarmBoutIds,
+}: EventDetailViewProps) {
+  const eventStartsAt = event.date ? event.date.toISOString() : null;
+  const bellProps = {
+    eventSlug: event.slug,
+    eventTitle: event.title,
+    eventStartsAt,
+    isLoggedIn,
+    hasPhone,
+    activeAlarmBoutIds,
+  };
+
   return (
     <div className="mx-auto max-w-5xl px-6 pb-20 pt-10 sm:px-10 sm:pt-14 lg:px-16">
       <p className="text-base font-semibold uppercase tracking-widest text-accent">
@@ -35,7 +53,7 @@ export default function EventDetailView({ event }: EventDetailViewProps) {
         <div className="mt-14 border-t border-border pt-10">
           <SectionLabel>Luta principal</SectionLabel>
           <div className="mt-6">
-            <FightCard fight={event.mainEvent} highlight />
+            <FightCard fight={event.mainEvent} highlight {...bellProps} />
           </div>
         </div>
       ) : (
@@ -49,7 +67,7 @@ export default function EventDetailView({ event }: EventDetailViewProps) {
           <SectionLabel>Card principal</SectionLabel>
           <div className="mt-2 divide-y divide-border">
             {event.mainCard.map((fight) => (
-              <FightCard key={fight.boutId} fight={fight} />
+              <FightCard key={fight.boutId} fight={fight} {...bellProps} />
             ))}
           </div>
         </section>
@@ -60,7 +78,7 @@ export default function EventDetailView({ event }: EventDetailViewProps) {
           <SectionLabel>Preliminares</SectionLabel>
           <div className="mt-2 divide-y divide-border">
             {event.prelimCard.map((fight) => (
-              <FightCard key={fight.boutId} fight={fight} />
+              <FightCard key={fight.boutId} fight={fight} {...bellProps} />
             ))}
           </div>
         </section>

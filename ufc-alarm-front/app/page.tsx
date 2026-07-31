@@ -1,4 +1,6 @@
 import { getEventBySlug, getUpcomingEvents } from "@/lib/api/events";
+import { getCurrentUser } from "@/lib/auth/dal";
+import { getActiveAlarmBoutIds } from "@/lib/alarms/queries";
 import EventDetailView from "@/components/EventDetailView";
 
 export const revalidate = 1800;
@@ -14,7 +16,16 @@ export default async function HomePage() {
     );
   }
 
-  const nearest = await getEventBySlug(events[0].slug);
+  const event = (await getEventBySlug(events[0].slug)) ?? events[0];
+  const user = await getCurrentUser();
+  const activeAlarmBoutIds = user ? getActiveAlarmBoutIds(user.id, event.slug) : new Set<string>();
 
-  return <EventDetailView event={nearest ?? events[0]} />;
+  return (
+    <EventDetailView
+      event={event}
+      isLoggedIn={!!user}
+      hasPhone={!!user?.phone}
+      activeAlarmBoutIds={activeAlarmBoutIds}
+    />
+  );
 }

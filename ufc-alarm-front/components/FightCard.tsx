@@ -6,6 +6,12 @@ import NotificationBellButton from "./NotificationBellButton";
 interface FightCardProps {
   fight: Fight;
   highlight?: boolean;
+  eventSlug: string;
+  eventTitle: string;
+  eventStartsAt: string | null;
+  isLoggedIn: boolean;
+  hasPhone: boolean;
+  activeAlarmBoutIds: Set<string>;
 }
 
 function FighterBlock({
@@ -39,7 +45,16 @@ function FighterBlock({
   );
 }
 
-export default function FightCard({ fight, highlight = false }: FightCardProps) {
+export default function FightCard({
+  fight,
+  highlight = false,
+  eventSlug,
+  eventTitle,
+  eventStartsAt,
+  isLoggedIn,
+  hasPhone,
+  activeAlarmBoutIds,
+}: FightCardProps) {
   const weightClass = formatWeightClass(fight.weightClass);
 
   return (
@@ -53,7 +68,19 @@ export default function FightCard({ fight, highlight = false }: FightCardProps) 
             </p>
           )}
         </div>
-        <NotificationBellButton size={highlight ? "lg" : "sm"} />
+        <NotificationBellButton
+          size={highlight ? "lg" : "sm"}
+          isLoggedIn={isLoggedIn}
+          hasPhone={hasPhone}
+          active={activeAlarmBoutIds.has(fight.boutId)}
+          eventSlug={eventSlug}
+          eventTitle={eventTitle}
+          eventStartsAt={eventStartsAt}
+          boutId={fight.boutId}
+          weightClass={fight.weightClass}
+          fighterRedName={fight.fighterRed.name}
+          fighterBlueName={fight.fighterBlue.name}
+        />
       </div>
 
       <div className="flex items-center gap-4 sm:gap-14">

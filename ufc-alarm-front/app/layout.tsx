@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, Inter } from "next/font/google";
 import TopNav from "@/components/TopNav";
+import { getCurrentUser } from "@/lib/auth/dal";
 import "./globals.css";
 
 const bebasNeue = Bebas_Neue({
@@ -19,18 +20,20 @@ export const metadata: Metadata = {
   description: "Próximos eventos de UFC, cards de luta e alertas por notificação.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getCurrentUser();
+
   return (
     <html
       lang="pt-BR"
       className={`${bebasNeue.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <TopNav />
+        <TopNav user={user} />
         <main className="flex-1">{children}</main>
       </body>
     </html>

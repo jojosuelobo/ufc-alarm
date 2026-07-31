@@ -35,15 +35,19 @@ export default function EventCountdown({ targetDate }: EventCountdownProps) {
   const [remaining, setRemaining] = useState<Remaining | null>(null);
 
   useEffect(() => {
-    if (!targetDate) {
-      setRemaining(null);
-      return;
-    }
-    setRemaining(computeRemaining(targetDate));
-    const id = setInterval(() => {
-      setRemaining(computeRemaining(targetDate));
-    }, 1000);
-    return () => clearInterval(id);
+    // Nothing to tick — the render below shows "Data a confirmar" regardless
+    // of `remaining`, so there's no stale value to clear here.
+    if (!targetDate) return;
+    const tick = () => setRemaining(computeRemaining(targetDate));
+    // Deferred (not called synchronously in the effect body) so the first
+    // real value still lands essentially immediately after mount, without
+    // waiting a full second for the first interval tick.
+    const timeoutId = setTimeout(tick, 0);
+    const intervalId = setInterval(tick, 1000);
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+    };
   }, [targetDate]);
 
   if (!targetDate) {
