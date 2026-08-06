@@ -1,0 +1,25 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env.local
+    ports:
+      - "3004:3000"
+    volumes:
+      - ufc_alarm_data:/app/.data
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env.local
+    command: ["node_modules/.bin/tsx", "scripts/mobile-alarm-worker.ts"]
+    volumes:
+      - ufc_alarm_data:/app/.data
+      - ./.secrets:/app/.secrets:ro
+    restart: unless-stopped
+
+volumes:
+  ufc_alarm_data:
