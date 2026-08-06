@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { usePathname } from "next/navigation";
 import { toggleAlarmAction } from "@/lib/alarms/actions";
+import { unlockAudio } from "@/lib/audio";
 import PromptModal from "./PromptModal";
 
 interface NotificationBellButtonProps {
@@ -52,6 +53,10 @@ export default function NotificationBellButton({
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
     e.preventDefault();
+
+    // A real click here is a real user gesture — good opportunity to unlock
+    // the alarm's AudioContext ahead of when it might actually be needed.
+    unlockAudio();
 
     if (!isLoggedIn) {
       setPrompt("login");

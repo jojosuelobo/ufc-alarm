@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, Inter } from "next/font/google";
 import TopNav from "@/components/TopNav";
+import AlarmWatcher from "@/components/AlarmWatcher";
 import { getCurrentUser } from "@/lib/auth/dal";
 import "./globals.css";
 
@@ -35,6 +36,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <TopNav user={user} />
         <main className="flex-1">{children}</main>
+        <AlarmWatcher userId={user?.id ?? null} />
       </body>
     </html>
   );

@@ -1,5 +1,6 @@
 import "server-only";
 import db from "@/lib/db";
+import { ALARM_LIVE_WINDOW_POST_HOURS } from "./constants";
 
 interface AlarmBoutIdRow {
   bout_id: string;
@@ -35,15 +36,25 @@ interface AlarmRow {
 }
 
 /**
- * Opportunistically prunes alarms whose event has already happened before
- * listing what's left — this is the whole "alarm disappears once the fight
- * has passed" behavior, no separate cleanup job needed. Rows with an
- * unknown (null) event date are never auto-deleted.
+ * Opportunistically prunes alarms whose event happened long enough ago that
+ * even a late-running card must be over, before listing what's left — this
+ * is the whole "alarm disappears once the fight has passed" behavior, no
+ * separate cleanup job needed. Rows with an unknown (null) event date are
+ * never auto-deleted.
+ *
+ * The cutoff is `event_starts_at` (roughly when the card/broadcast begins,
+ * not the marked bout's own start) plus a grace window, not the moment the
+ * card starts — a marked bout (e.g. the main event) can happen hours after
+ * `event_starts_at`, so pruning right at `event_starts_at` would delete the
+ * alarm before the fight it's for has even happened.
  */
 export function getActiveAlarmsForUser(userId: number): AlarmListItem[] {
+  const cutoff = new Date(
+    Date.now() - ALARM_LIVE_WINDOW_POST_HOURS * 60 * 60 * 1000,
+  ).toISOString();
   db.prepare(
     `DELETE FROM alarms WHERE user_id = ? AND event_starts_at IS NOT NULL AND event_starts_at < ?`,
-  ).run(userId, new Date().toISOString());
+  ).run(userId, cutoff);
 
   const rows = db
     .prepare(
