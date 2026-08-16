@@ -6,6 +6,8 @@ import NotificationBellButton from "./NotificationBellButton";
 interface FightCardProps {
   fight: Fight;
   highlight?: boolean;
+  isLive?: boolean;
+  winnerName?: string | null;
   eventSlug: string;
   eventTitle: string;
   eventStartsAt: string | null;
@@ -48,6 +50,8 @@ function FighterBlock({
 export default function FightCard({
   fight,
   highlight = false,
+  isLive = false,
+  winnerName = null,
   eventSlug,
   eventTitle,
   eventStartsAt,
@@ -60,12 +64,22 @@ export default function FightCard({
   return (
     <div className={highlight ? "" : "py-10 first:pt-0 last:pb-0"}>
       <div className="mb-5 flex items-center justify-between gap-3">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           {weightClass && (
             <p className="truncate font-heading text-base uppercase tracking-wide sm:text-lg">
               {weightClass}
               {fight.titleBout ? " · Título" : ""}
             </p>
+          )}
+          {isLive && (
+            <span className="shrink-0 rounded bg-accent px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+              Ao vivo
+            </span>
+          )}
+          {!isLive && winnerName && (
+            <span className="shrink-0 truncate rounded bg-surface-raised px-2 py-0.5 text-xs font-bold text-foreground">
+              🏆 {winnerName}
+            </span>
           )}
         </div>
         <NotificationBellButton

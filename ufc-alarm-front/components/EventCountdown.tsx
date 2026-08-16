@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 interface EventCountdownProps {
   targetDate: Date | null;
+  isLive?: boolean;
 }
 
 interface Remaining {
@@ -28,7 +29,7 @@ function pad(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
-export default function EventCountdown({ targetDate }: EventCountdownProps) {
+export default function EventCountdown({ targetDate, isLive = false }: EventCountdownProps) {
   // Starts null on both server and client render so the first paint always
   // matches (avoids a hydration mismatch from computing Date.now() at
   // render time). The real value is filled in client-side after mount.
@@ -49,6 +50,17 @@ export default function EventCountdown({ targetDate }: EventCountdownProps) {
       clearInterval(intervalId);
     };
   }, [targetDate]);
+
+  if (isLive) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-accent" />
+        <span className="font-heading text-4xl uppercase tracking-wide text-accent sm:text-5xl">
+          Ao vivo
+        </span>
+      </div>
+    );
+  }
 
   if (!targetDate) {
     return (

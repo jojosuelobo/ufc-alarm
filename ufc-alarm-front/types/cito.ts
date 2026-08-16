@@ -10,7 +10,7 @@ export interface CitoEventListItem {
   slug: string;
   title: string;
   shortTitle: string;
-  status: "scheduled" | "completed" | string;
+  status: "scheduled" | "live" | "completed" | string;
   startsAt: string | null;
   venue: string | null;
   city: string | null;

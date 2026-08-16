@@ -72,7 +72,15 @@ function mapEventBase(e: {
 }
 
 /**
- * Fetches upcoming (scheduled, dated) UFC events, sorted soonest-first.
+ * Fetches upcoming (scheduled, dated) UFC events, sorted soonest-first. An
+ * event that has gone live is included too (not just "scheduled") — Cito
+ * flips an event's status to "live" once it starts, and excluding that
+ * status here used to make the current, in-progress event disappear from
+ * this list the moment it started, jumping the home page straight to the
+ * *next* scheduled event instead of the one actually airing. A live event's
+ * startsAt is already in the past, so it still sorts first (soonest) among
+ * everything else in the list, ahead of future events, without any special
+ * ordering logic.
  *
  * The Cito events list mixes past and future events plus stale placeholder
  * rows (title "Search results", startsAt null) and is NOT sorted by date.
@@ -85,7 +93,7 @@ export async function getUpcomingEvents(): Promise<UpcomingEvent[]> {
   return res.data
     .filter(
       (e) =>
-        e.status === "scheduled" &&
+        (e.status === "scheduled" || e.status === "live") &&
         e.startsAt !== null &&
         e.title !== "Search results",
     )

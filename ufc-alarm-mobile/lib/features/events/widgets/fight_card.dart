@@ -10,6 +10,8 @@ class FightCard extends StatelessWidget {
   final Fight fight;
   final bool highlight;
   final bool alarmActive;
+  final bool isLive;
+  final String? winnerName;
   final Future<bool> Function() onToggleAlarm;
 
   const FightCard({
@@ -17,6 +19,8 @@ class FightCard extends StatelessWidget {
     required this.fight,
     this.highlight = false,
     required this.alarmActive,
+    this.isLive = false,
+    this.winnerName,
     required this.onToggleAlarm,
   });
 
@@ -45,6 +49,8 @@ class FightCard extends StatelessWidget {
                     ),
                   ),
                 ),
+              if (isLive) const _LiveTag(),
+              if (!isLive && winnerName != null) _WinnerTag(name: winnerName!),
               NotificationBellButton(
                 size: highlight ? BellSize.lg : BellSize.sm,
                 active: alarmActive,
@@ -86,6 +92,58 @@ class FightCard extends StatelessWidget {
   }
 
   String _formatOdds(num value) => value > 0 ? '+$value' : '$value';
+}
+
+class _LiveTag extends StatelessWidget {
+  const _LiveTag();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.accent,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: const Text(
+        'AO VIVO',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _WinnerTag extends StatelessWidget {
+  final String name;
+  const _WinnerTag({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      constraints: const BoxConstraints(maxWidth: 140),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceRaised,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        '🏆 $name',
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppColors.foreground,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
 }
 
 class _FighterBlock extends StatelessWidget {

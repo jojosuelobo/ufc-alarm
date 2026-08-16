@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/fight.dart';
+import '../../../models/live_status.dart';
 import '../../../models/upcoming_event.dart';
 import '../../../providers/alarms_providers.dart';
 import '../../../providers/api_providers.dart';
 import '../../../providers/device_providers.dart';
+import '../../../providers/events_providers.dart';
 import 'event_countdown.dart';
 import 'fight_card.dart';
 
@@ -36,9 +38,24 @@ class EventDetailView extends ConsumerWidget {
     final activeBoutIdsAsync = ref.watch(activeAlarmBoutIdsProvider);
     final activeBoutIds = activeBoutIdsAsync.value ?? <String>{};
 
+    final liveStatusAsync = ref.watch(liveStatusProvider(event.slug));
+    final liveStatus = liveStatusAsync.value ??
+        const LiveStatus(eventStatus: null, boutStatusById: {});
+
     final restOfMainCard = event.mainCard
         .where((f) => event.mainEvent == null || f.boutId != event.mainEvent!.boutId)
         .toList();
+
+    String? winnerNameFor(Fight fight) {
+      switch (liveStatus.winnerCornerFor(fight.boutId)) {
+        case 'red':
+          return fight.fighterRed.name;
+        case 'blue':
+          return fight.fighterBlue.name;
+        default:
+          return null;
+      }
+    }
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -57,7 +74,7 @@ class EventDetailView extends ConsumerWidget {
             child: Text(event.location!, style: const TextStyle(color: AppColors.muted)),
           ),
         const SizedBox(height: 16),
-        EventCountdown(targetDate: event.date),
+        EventCountdown(targetDate: event.date, isLive: liveStatus.isEventLive),
         const SizedBox(height: 24),
         if (event.mainEvent != null) ...[
           const _SectionLabel('Luta Principal'),
@@ -65,6 +82,8 @@ class EventDetailView extends ConsumerWidget {
             fight: event.mainEvent!,
             highlight: true,
             alarmActive: activeBoutIds.contains(event.mainEvent!.boutId),
+            isLive: liveStatus.isBoutLive(event.mainEvent!.boutId),
+            winnerName: winnerNameFor(event.mainEvent!),
             onToggleAlarm: _toggleFor(ref, event.mainEvent!),
           ),
           const Divider(color: AppColors.border, height: 32),
@@ -75,6 +94,8 @@ class EventDetailView extends ConsumerWidget {
             FightCard(
               fight: fight,
               alarmActive: activeBoutIds.contains(fight.boutId),
+              isLive: liveStatus.isBoutLive(fight.boutId),
+              winnerName: winnerNameFor(fight),
               onToggleAlarm: _toggleFor(ref, fight),
             ),
           const Divider(color: AppColors.border, height: 32),
@@ -85,6 +106,8 @@ class EventDetailView extends ConsumerWidget {
             FightCard(
               fight: fight,
               alarmActive: activeBoutIds.contains(fight.boutId),
+              isLive: liveStatus.isBoutLive(fight.boutId),
+              winnerName: winnerNameFor(fight),
               onToggleAlarm: _toggleFor(ref, fight),
             ),
         ],

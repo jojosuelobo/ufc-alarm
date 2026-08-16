@@ -11,8 +11,17 @@
  */
 export const ALARM_LIVE_WINDOW_POST_HOURS = 8;
 
-/** How early before event_starts_at a Cito live-status check becomes "worth it". */
-export const ALARM_LIVE_WINDOW_PRE_MINUTES = 15;
+/**
+ * How early before event_starts_at a Cito live-status check becomes
+ * "worth it". event_starts_at is one timestamp per event (the official/
+ * main-card start), shared by every bout's alarm row — but early prelims
+ * can go live hours before that time. 15 min was too tight: a fight already
+ * live at, say, 40 min before the listed start fell outside the window, so
+ * the alarm's live-status check never even fired and its push never sent.
+ * 240 min (4h) comfortably covers early prelims + prelims ahead of the
+ * main card on a full UFC event.
+ */
+export const ALARM_LIVE_WINDOW_PRE_MINUTES = 240;
 
 /**
  * Bounds on event_starts_at (not on "now") that together are equivalent to
