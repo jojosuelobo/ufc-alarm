@@ -16,6 +16,7 @@ export interface Fight {
   titleBout: boolean;
   cardSection: CardSection;
   cardPosition: string;
+  boutOrder: number;
   fighterRed: Fighter;
   fighterBlue: Fighter;
   /** Only set when both sides have a real value — Cito rarely populates this. */
