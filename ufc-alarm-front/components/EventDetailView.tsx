@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Fight, UpcomingEvent } from "@/types/domain";
+import type { UpcomingEvent } from "@/types/domain";
 import EventCountdown from "./EventCountdown";
 import FightCard from "./FightCard";
 
@@ -12,9 +12,18 @@ interface EventDetailViewProps {
   activeAlarmBoutIds: Set<string>;
 }
 
+interface LiveBoutStatus {
+  boutId: string;
+  status: string;
+  winnerCorner: "red" | "blue" | null;
+  round: number | null;
+  time: string | null;
+  method: string | null;
+}
+
 interface LiveStatusResponse {
   status: string | null;
-  bouts: { boutId: string; status: string; winnerCorner: "red" | "blue" | null }[];
+  bouts: LiveBoutStatus[];
 }
 
 // Public per-event live status (GET /api/events/[slug]/live), polled
@@ -25,7 +34,7 @@ const LIVE_STATUS_POLL_MS = 30_000;
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="font-heading text-xl uppercase tracking-wide sm:text-2xl">
+    <p className="font-heading text-3xl uppercase tracking-tight sm:text-4xl">
       {children}
     </p>
   );
@@ -70,23 +79,22 @@ export default function EventDetailView({
     };
   }, [event.slug]);
 
-  const liveBoutIds = new Set(
-    (liveStatus?.bouts ?? [])
-      .filter((bout) => bout.status === "live")
-      .map((bout) => bout.boutId),
+  const liveBoutsById = new Map(
+    (liveStatus?.bouts ?? []).map((bout) => [bout.boutId, bout] as const),
   );
-  const isEventLive = liveStatus?.status === "live" || liveBoutIds.size > 0;
+  const isEventLive =
+    liveStatus?.status === "live" ||
+    [...liveBoutsById.values()].some((bout) => bout.status === "live");
 
-  const winnerCornerByBoutId = new Map(
-    (liveStatus?.bouts ?? [])
-      .filter((bout) => bout.winnerCorner !== null)
-      .map((bout) => [bout.boutId, bout.winnerCorner] as const),
-  );
-  function winnerNameFor(fight: Fight): string | null {
-    const corner = winnerCornerByBoutId.get(fight.boutId);
-    if (corner === "red") return fight.fighterRed.name;
-    if (corner === "blue") return fight.fighterBlue.name;
-    return null;
+  function liveDataFor(boutId: string) {
+    const bout = liveBoutsById.get(boutId);
+    return {
+      isLive: bout?.status === "live",
+      winnerCorner: bout?.winnerCorner ?? null,
+      round: bout?.round ?? null,
+      time: bout?.time ?? null,
+      method: bout?.method ?? null,
+    };
   }
 
   return (
@@ -112,8 +120,7 @@ export default function EventDetailView({
             <FightCard
               fight={event.mainEvent}
               highlight
-              isLive={liveBoutIds.has(event.mainEvent.boutId)}
-              winnerName={winnerNameFor(event.mainEvent)}
+              {...liveDataFor(event.mainEvent.boutId)}
               {...bellProps}
             />
           </div>
@@ -132,8 +139,7 @@ export default function EventDetailView({
               <FightCard
                 key={fight.boutId}
                 fight={fight}
-                isLive={liveBoutIds.has(fight.boutId)}
-                winnerName={winnerNameFor(fight)}
+                {...liveDataFor(fight.boutId)}
                 {...bellProps}
               />
             ))}
@@ -149,8 +155,7 @@ export default function EventDetailView({
               <FightCard
                 key={fight.boutId}
                 fight={fight}
-                isLive={liveBoutIds.has(fight.boutId)}
-                winnerName={winnerNameFor(fight)}
+                {...liveDataFor(fight.boutId)}
                 {...bellProps}
               />
             ))}

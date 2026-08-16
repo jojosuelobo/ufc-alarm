@@ -11,7 +11,10 @@ class FightCard extends StatelessWidget {
   final bool highlight;
   final bool alarmActive;
   final bool isLive;
-  final String? winnerName;
+  final String? winnerCorner;
+  final int? round;
+  final String? time;
+  final String? method;
   final Future<bool> Function() onToggleAlarm;
 
   const FightCard({
@@ -20,7 +23,10 @@ class FightCard extends StatelessWidget {
     this.highlight = false,
     required this.alarmActive,
     this.isLive = false,
-    this.winnerName,
+    this.winnerCorner,
+    this.round,
+    this.time,
+    this.method,
     required this.onToggleAlarm,
   });
 
@@ -28,6 +34,8 @@ class FightCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final weightClass = formatWeightClass(fight.weightClass);
     final avatarSize = highlight ? AvatarSize.lg : AvatarSize.sm;
+    final isFinished = !isLive && winnerCorner != null;
+    final hasStatsRow = (isLive || isFinished) && (round != null || time != null || method != null);
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: highlight ? 0 : 24),
@@ -35,33 +43,55 @@ class FightCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              if (weightClass != null)
-                Expanded(
-                  child: Text(
-                    weightClass + (fight.titleBout ? ' · Título' : ''),
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: highlight ? 16 : 14,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
+              const Expanded(child: SizedBox()),
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (weightClass != null)
+                      Flexible(
+                        child: Text(
+                          weightClass + (fight.titleBout ? ' · Disputa de Cinturão' : ''),
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    if (isLive) ...[
+                      const SizedBox(width: 6),
+                      const _LiveTag(),
+                    ],
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: NotificationBellButton(
+                    size: highlight ? BellSize.lg : BellSize.sm,
+                    active: alarmActive,
+                    onToggle: onToggleAlarm,
                   ),
                 ),
-              if (isLive) const _LiveTag(),
-              if (!isLive && winnerName != null) _WinnerTag(name: winnerName!),
-              NotificationBellButton(
-                size: highlight ? BellSize.lg : BellSize.sm,
-                active: alarmActive,
-                onToggle: onToggleAlarm,
               ),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _FighterBlock(fighter: fight.fighterRed, size: avatarSize)),
+              Expanded(
+                child: _FighterBlock(
+                  fighter: fight.fighterRed,
+                  size: avatarSize,
+                  isWinner: winnerCorner == 'red',
+                ),
+              ),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8),
                 child: Text(
@@ -73,9 +103,28 @@ class FightCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Expanded(child: _FighterBlock(fighter: fight.fighterBlue, size: avatarSize)),
+              Expanded(
+                child: _FighterBlock(
+                  fighter: fight.fighterBlue,
+                  size: avatarSize,
+                  isWinner: winnerCorner == 'blue',
+                ),
+              ),
             ],
           ),
+          if (hasStatsRow) ...[
+            const SizedBox(height: 12),
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (round != null) _StatBlock(label: 'Round', value: '$round'),
+                  if (time != null) _StatBlock(label: 'Tempo', value: time!),
+                  if (method != null) _StatBlock(label: 'Método', value: method!),
+                ],
+              ),
+            ),
+          ],
           if (fight.odds != null) ...[
             const SizedBox(height: 16),
             Row(
@@ -100,7 +149,6 @@ class _LiveTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: AppColors.accent,
@@ -119,28 +167,29 @@ class _LiveTag extends StatelessWidget {
   }
 }
 
-class _WinnerTag extends StatelessWidget {
-  final String name;
-  const _WinnerTag({required this.name});
+class _StatBlock extends StatelessWidget {
+  final String label;
+  final String value;
+  const _StatBlock({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      constraints: const BoxConstraints(maxWidth: 140),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        '🏆 $name',
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: AppColors.foreground,
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Column(
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
+        ],
       ),
     );
   }
@@ -149,13 +198,40 @@ class _WinnerTag extends StatelessWidget {
 class _FighterBlock extends StatelessWidget {
   final Fighter fighter;
   final AvatarSize size;
-  const _FighterBlock({required this.fighter, required this.size});
+  final bool isWinner;
+  const _FighterBlock({required this.fighter, required this.size, this.isWinner = false});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        FighterAvatar(fighter: fighter, size: size),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            FighterAvatar(fighter: fighter, size: size, shape: AvatarShape.portrait),
+            if (isWinner)
+              Positioned(
+                left: -6,
+                top: -6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'VITÓRIA',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: 10),
         Text(
           fighter.name,
@@ -168,11 +244,6 @@ class _FighterBlock extends StatelessWidget {
             letterSpacing: 0.5,
           ),
         ),
-        if (fighter.record != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(fighter.record!, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-          ),
         if (fighter.flagEmoji != null && fighter.country != null)
           Padding(
             padding: const EdgeInsets.only(top: 2),

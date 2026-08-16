@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLiveEventStatus } from "@/lib/live/citoLiveClient";
+import { translateMethod } from "@/lib/format";
 
 /**
  * Public (no auth) per-event live status, for the anonymous mobile app —
@@ -27,6 +28,9 @@ export async function GET(
       // own Fight data, keyed on which corner won.
       winnerCorner:
         t.red?.outcome === "win" ? "red" : t.blue?.outcome === "win" ? "blue" : null,
+      round: t.currentRound ?? null,
+      time: t.currentTime ?? null,
+      method: translateMethod(t.method),
     })),
   });
 }

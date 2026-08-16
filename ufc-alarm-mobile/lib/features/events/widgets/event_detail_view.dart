@@ -33,29 +33,38 @@ class EventDetailView extends ConsumerWidget {
     };
   }
 
+  Widget _buildFightCard(
+    WidgetRef ref,
+    Fight fight,
+    LiveStatus liveStatus,
+    Set<String> activeBoutIds, {
+    bool highlight = false,
+  }) {
+    final bout = liveStatus.boutFor(fight.boutId);
+    return FightCard(
+      fight: fight,
+      highlight: highlight,
+      alarmActive: activeBoutIds.contains(fight.boutId),
+      isLive: bout?.status == 'live',
+      winnerCorner: bout?.winnerCorner,
+      round: bout?.round,
+      time: bout?.time,
+      method: bout?.method,
+      onToggleAlarm: _toggleFor(ref, fight),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeBoutIdsAsync = ref.watch(activeAlarmBoutIdsProvider);
     final activeBoutIds = activeBoutIdsAsync.value ?? <String>{};
 
     final liveStatusAsync = ref.watch(liveStatusProvider(event.slug));
-    final liveStatus = liveStatusAsync.value ??
-        const LiveStatus(eventStatus: null, boutStatusById: {});
+    final liveStatus = liveStatusAsync.value ?? const LiveStatus();
 
     final restOfMainCard = event.mainCard
         .where((f) => event.mainEvent == null || f.boutId != event.mainEvent!.boutId)
         .toList();
-
-    String? winnerNameFor(Fight fight) {
-      switch (liveStatus.winnerCornerFor(fight.boutId)) {
-        case 'red':
-          return fight.fighterRed.name;
-        case 'blue':
-          return fight.fighterBlue.name;
-        default:
-          return null;
-      }
-    }
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -78,38 +87,17 @@ class EventDetailView extends ConsumerWidget {
         const SizedBox(height: 24),
         if (event.mainEvent != null) ...[
           const _SectionLabel('Luta Principal'),
-          FightCard(
-            fight: event.mainEvent!,
-            highlight: true,
-            alarmActive: activeBoutIds.contains(event.mainEvent!.boutId),
-            isLive: liveStatus.isBoutLive(event.mainEvent!.boutId),
-            winnerName: winnerNameFor(event.mainEvent!),
-            onToggleAlarm: _toggleFor(ref, event.mainEvent!),
-          ),
+          _buildFightCard(ref, event.mainEvent!, liveStatus, activeBoutIds, highlight: true),
           const Divider(color: AppColors.border, height: 32),
         ],
         if (restOfMainCard.isNotEmpty) ...[
           const _SectionLabel('Card Principal'),
-          for (final fight in restOfMainCard)
-            FightCard(
-              fight: fight,
-              alarmActive: activeBoutIds.contains(fight.boutId),
-              isLive: liveStatus.isBoutLive(fight.boutId),
-              winnerName: winnerNameFor(fight),
-              onToggleAlarm: _toggleFor(ref, fight),
-            ),
+          for (final fight in restOfMainCard) _buildFightCard(ref, fight, liveStatus, activeBoutIds),
           const Divider(color: AppColors.border, height: 32),
         ],
         if (event.prelimCard.isNotEmpty) ...[
-          const _SectionLabel('Prelims'),
-          for (final fight in event.prelimCard)
-            FightCard(
-              fight: fight,
-              alarmActive: activeBoutIds.contains(fight.boutId),
-              isLive: liveStatus.isBoutLive(fight.boutId),
-              winnerName: winnerNameFor(fight),
-              onToggleAlarm: _toggleFor(ref, fight),
-            ),
+          const _SectionLabel('Preliminares'),
+          for (final fight in event.prelimCard) _buildFightCard(ref, fight, liveStatus, activeBoutIds),
         ],
       ],
     );
@@ -127,10 +115,10 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         text.toUpperCase(),
         style: const TextStyle(
-          color: AppColors.muted,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.2,
+          color: AppColors.foreground,
+          fontSize: 24,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
         ),
       ),
     );
