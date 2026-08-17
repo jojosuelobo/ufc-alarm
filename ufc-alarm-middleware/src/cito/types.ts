@@ -15,8 +15,9 @@ export interface CitoLiveBoutTracking {
   status: string;
   currentRound?: number;
   currentTime?: string;
-  red?: { fighterName: string; fighterSlug: string };
-  blue?: { fighterName: string; fighterSlug: string };
+  method?: string | null;
+  red?: { fighterName: string; fighterSlug: string; outcome?: string | null };
+  blue?: { fighterName: string; fighterSlug: string; outcome?: string | null };
 }
 
 export interface CitoLiveEventData {

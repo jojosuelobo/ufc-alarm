@@ -4,7 +4,8 @@ import '../../../core/theme/app_theme.dart';
 
 class EventCountdown extends StatefulWidget {
   final DateTime? targetDate;
-  const EventCountdown({super.key, required this.targetDate});
+  final bool isLive;
+  const EventCountdown({super.key, required this.targetDate, this.isLive = false});
 
   @override
   State<EventCountdown> createState() => _EventCountdownState();
@@ -69,6 +70,10 @@ class _EventCountdownState extends State<EventCountdown> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isLive) {
+      return const _LiveBadge();
+    }
+
     if (widget.targetDate == null) {
       return const Text(
         'DATA A CONFIRMAR',
@@ -125,6 +130,34 @@ class _EventCountdownState extends State<EventCountdown> {
               ),
             ),
         ],
+      ],
+    );
+  }
+}
+
+class _LiveBadge extends StatelessWidget {
+  const _LiveBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          'AO VIVO',
+          style: TextStyle(
+            color: AppColors.accent,
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.5,
+          ),
+        ),
       ],
     );
   }

@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { UpcomingEvent } from "@/types/domain";
 import EventCountdown from "./EventCountdown";
 import FightCard from "./FightCard";
@@ -9,9 +12,29 @@ interface EventDetailViewProps {
   activeAlarmBoutIds: Set<string>;
 }
 
+interface LiveBoutStatus {
+  boutId: string;
+  status: string;
+  winnerCorner: "red" | "blue" | null;
+  round: number | null;
+  time: string | null;
+  method: string | null;
+}
+
+interface LiveStatusResponse {
+  status: string | null;
+  bouts: LiveBoutStatus[];
+}
+
+// Public per-event live status (GET /api/events/[slug]/live), polled
+// independently of the alarm-specific /api/live-status AlarmWatcher uses —
+// this drives the "Ao vivo" countdown/card badges for every visitor,
+// logged in or not, not just people with an active alarm on this event.
+const LIVE_STATUS_POLL_MS = 30_000;
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="font-heading text-xl uppercase tracking-wide sm:text-2xl">
+    <p className="font-heading text-3xl uppercase tracking-tight sm:text-4xl">
       {children}
     </p>
   );
@@ -33,6 +56,47 @@ export default function EventDetailView({
     activeAlarmBoutIds,
   };
 
+  const [liveStatus, setLiveStatus] = useState<LiveStatusResponse | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function poll() {
+      try {
+        const res = await fetch(`/api/events/${event.slug}/live`, { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const json: LiveStatusResponse = await res.json();
+        if (!cancelled) setLiveStatus(json);
+      } catch {
+        // Fail-soft — keep whatever status is already on screen and retry
+        // next tick, same philosophy as AlarmWatcher's poll.
+      }
+    }
+    poll();
+    const intervalId = setInterval(poll, LIVE_STATUS_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [event.slug]);
+
+  const liveBoutsById = new Map(
+    (liveStatus?.bouts ?? []).map((bout) => [bout.boutId, bout] as const),
+  );
+  const isEventLive =
+    liveStatus?.status === "live" ||
+    [...liveBoutsById.values()].some((bout) => bout.status === "live");
+
+  function liveDataFor(boutId: string) {
+    const bout = liveBoutsById.get(boutId);
+    return {
+      isLive: bout?.status === "live",
+      winnerCorner: bout?.winnerCorner ?? null,
+      round: bout?.round ?? null,
+      time: bout?.time ?? null,
+      method: bout?.method ?? null,
+    };
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-6 pb-20 pt-10 sm:px-10 sm:pt-14 lg:px-16">
       <p className="text-base font-semibold uppercase tracking-widest text-accent">
@@ -46,14 +110,19 @@ export default function EventDetailView({
       )}
 
       <div className="mt-10">
-        <EventCountdown targetDate={event.date} />
+        <EventCountdown targetDate={event.date} isLive={isEventLive} />
       </div>
 
       {event.mainEvent ? (
         <div className="mt-14 border-t border-border pt-10">
           <SectionLabel>Luta principal</SectionLabel>
           <div className="mt-6">
-            <FightCard fight={event.mainEvent} highlight {...bellProps} />
+            <FightCard
+              fight={event.mainEvent}
+              highlight
+              {...liveDataFor(event.mainEvent.boutId)}
+              {...bellProps}
+            />
           </div>
         </div>
       ) : (
@@ -67,7 +136,12 @@ export default function EventDetailView({
           <SectionLabel>Card principal</SectionLabel>
           <div className="mt-2 divide-y divide-border">
             {event.mainCard.map((fight) => (
-              <FightCard key={fight.boutId} fight={fight} {...bellProps} />
+              <FightCard
+                key={fight.boutId}
+                fight={fight}
+                {...liveDataFor(fight.boutId)}
+                {...bellProps}
+              />
             ))}
           </div>
         </section>
@@ -78,7 +152,12 @@ export default function EventDetailView({
           <SectionLabel>Preliminares</SectionLabel>
           <div className="mt-2 divide-y divide-border">
             {event.prelimCard.map((fight) => (
-              <FightCard key={fight.boutId} fight={fight} {...bellProps} />
+              <FightCard
+                key={fight.boutId}
+                fight={fight}
+                {...liveDataFor(fight.boutId)}
+                {...bellProps}
+              />
             ))}
           </div>
         </section>

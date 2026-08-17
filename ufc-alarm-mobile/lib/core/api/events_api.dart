@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../models/live_status.dart';
 import '../../models/upcoming_event.dart';
 
 class EventsApi {
@@ -21,5 +22,10 @@ class EventsApi {
       if (e.response?.statusCode == 404) return null;
       rethrow;
     }
+  }
+
+  Future<LiveStatus> getLiveStatus(String slug) async {
+    final res = await _dio.get('/api/events/$slug/live');
+    return LiveStatus.fromJson(res.data as Map<String, dynamic>);
   }
 }

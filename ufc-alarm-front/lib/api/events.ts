@@ -38,8 +38,12 @@ function mapBout(b: CitoBout): Fight | null {
     boutId: b.id,
     weightClass: b.weightClass ?? undefined,
     titleBout: b.titleBout,
-    cardSection: b.cardSection === "Prelims" ? "prelim" : "main",
+    // Cito has a third section, "Early Prelims", in addition to "Main Card"
+    // and "Prelims" — treating anything-not-"Prelims" as "main" (the old
+    // check) silently swept early-prelim bouts into the main card.
+    cardSection: b.cardSection === "Main Card" ? "main" : "prelim",
     cardPosition: b.cardPosition,
+    boutOrder: b.boutOrder,
     fighterRed: mapFighter(red),
     fighterBlue: mapFighter(blue),
     odds,
@@ -72,7 +76,15 @@ function mapEventBase(e: {
 }
 
 /**
- * Fetches upcoming (scheduled, dated) UFC events, sorted soonest-first.
+ * Fetches upcoming (scheduled, dated) UFC events, sorted soonest-first. An
+ * event that has gone live is included too (not just "scheduled") — Cito
+ * flips an event's status to "live" once it starts, and excluding that
+ * status here used to make the current, in-progress event disappear from
+ * this list the moment it started, jumping the home page straight to the
+ * *next* scheduled event instead of the one actually airing. A live event's
+ * startsAt is already in the past, so it still sorts first (soonest) among
+ * everything else in the list, ahead of future events, without any special
+ * ordering logic.
  *
  * The Cito events list mixes past and future events plus stale placeholder
  * rows (title "Search results", startsAt null) and is NOT sorted by date.
@@ -85,7 +97,7 @@ export async function getUpcomingEvents(): Promise<UpcomingEvent[]> {
   return res.data
     .filter(
       (e) =>
-        e.status === "scheduled" &&
+        (e.status === "scheduled" || e.status === "live") &&
         e.startsAt !== null &&
         e.title !== "Search results",
     )
@@ -106,17 +118,17 @@ export async function getEventBySlug(
   }
 
   const event = mapEventBase(res.data.event);
+  // boutOrder is already a single globally-consistent numbering across every
+  // section (Main Card 1001-1005, Prelims 2001-2004, Early Prelims
+  // 3001-3003, in this event's case) — sorting on it directly gets the
+  // whole card in broadcast order without needing to compare cardSection
+  // and cardPosition separately (the previous cardPosition string compare
+  // broke across sections, e.g. "Early Prelims 1" < "Main Card 1"
+  // alphabetically, which misidentified the main event).
   const fights = res.data.bouts
     .map(mapBout)
     .filter((f): f is Fight => f !== null)
-    .sort((a, b) => {
-      if (a.cardSection !== b.cardSection) {
-        return a.cardSection === "main" ? -1 : 1;
-      }
-      return a.cardPosition.localeCompare(b.cardPosition, undefined, {
-        numeric: true,
-      });
-    });
+    .sort((a, b) => a.boutOrder - b.boutOrder);
 
   event.mainCard = fights.filter((f) => f.cardSection === "main");
   event.prelimCard = fights.filter((f) => f.cardSection === "prelim");
