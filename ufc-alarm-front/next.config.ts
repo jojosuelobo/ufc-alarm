@@ -6,12 +6,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
-  // Dev-only CORS so the Flutter web build (served from its own port by
-  // `flutter run -d chrome`) can call this API from the browser. Not
-  // needed for the mobile app on a real device/emulator or for the web
-  // frontend, which is same-origin.
+  // CORS so the Flutter web build (served from its own origin, e.g.
+  // `flutter run -d chrome` locally or a separately hosted web build) can
+  // call this API from the browser — including against the public
+  // production domain, not just local dev. Not needed for the mobile app on
+  // a real device/emulator or for the web frontend, which is same-origin.
   async headers() {
-    if (process.env.NODE_ENV === "production") return [];
     return [
       {
         source: "/api/:path*",
