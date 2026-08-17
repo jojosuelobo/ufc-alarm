@@ -9,12 +9,13 @@
  * device so the Flutter app can ring an alarm-style local notification even
  * if the app is fully closed.
  *
- * Cannot import lib/db.ts, lib/live/citoLiveClient.ts, or lib/mobile/queries.ts
- * directly — they're guarded by `import "server-only"`, which throws outside
- * the Next.js request-rendering context. This file and ./lib/citoLiveFetch.ts
- * are deliberate, minimal duplicates of just what the worker needs from
- * those modules. lib/shared/alarmWindow.ts has no such guard and IS shared
- * directly with the Next.js app.
+ * Cannot import lib/db.ts or lib/mobile/queries.ts directly — they're
+ * guarded by `import "server-only"`, which throws outside the Next.js
+ * request-rendering context. This file has a deliberate, minimal duplicate
+ * of just what the worker needs from lib/db.ts. lib/shared/alarmWindow.ts
+ * and lib/shared/citoLiveFetch.ts have no such guard and ARE shared
+ * directly with the Next.js app (which re-exports the latter, with the
+ * guard, from lib/live/citoLiveClient.ts).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -22,7 +23,7 @@ import Database from "better-sqlite3";
 import { initializeApp, cert } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
 import { getLiveWindowBounds } from "../lib/shared/alarmWindow";
-import { getLiveEventStatus } from "./lib/citoLiveFetch";
+import { getLiveEventStatus } from "../lib/shared/citoLiveFetch";
 
 // --- Minimal .env.local loader -------------------------------------------
 // Next.js auto-loads .env.local for the `web` process; this standalone
