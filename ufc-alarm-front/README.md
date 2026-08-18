@@ -7,9 +7,10 @@ precisar ficar checando o card manualmente.
 
 Visual editorial no estilo do site oficial do UFC (fundo claro, tipografia
 condensada em caixa alta, vermelho como cor de destaque), dados reais vindos
-da [Cito API](https://citoapi.com/ufc-api/), com conta de usuário e alarmes
-persistidos num banco SQLite local — tudo rodando dentro do próprio app
-Next.js, sem backend separado.
+da [Cito API](https://citoapi.com/ufc-api/) através do `ufc-alarm-middleware`
+(serviço irmão neste monorepo, ver `../ufc-alarm-middleware/README.md`), com
+conta de usuário e alarmes persistidos num banco SQLite local — tudo rodando
+dentro do próprio app Next.js, sem backend separado além do middleware.
 
 ## Funcionalidades
 
@@ -51,7 +52,9 @@ estatísticas round a round, resultados de eventos passados.
 - **jose** (sessão JWT em cookie httpOnly) + **bcryptjs** (hash de senha)
 - Áudio do alarme sintetizado com a **Web Audio API** — sem arquivo de som
   externo
-- Dados de eventos/lutas via [Cito API](https://citoapi.com/ufc-api/)
+- Dados de eventos/lutas via [Cito API](https://citoapi.com/ufc-api/),
+  consumida indiretamente através do `ufc-alarm-middleware` — este projeto
+  não guarda mais nenhuma chave da Cito
 
 Sem ORM, sem biblioteca de auth pronta, sem backend separado — tudo dentro
 deste projeto Next.js, de propósito, para manter simples.
@@ -71,9 +74,14 @@ deste projeto Next.js, de propósito, para manter simples.
    ```
 
    ```
-   # Chave da Cito API (https://citoapi.com/ufc-api/), enviada no header x-api-key.
-   # Nunca é exposta ao navegador — só é lida em lib/api/citoClient.ts e lib/live/citoLiveClient.ts.
-   CITO_API_KEY=sua-chave-aqui
+   # URL do ufc-alarm-middleware (proxy único de créditos da Cito API — ver
+   # ../ufc-alarm-middleware/README.md). Este projeto não fala mais com a
+   # Cito API diretamente; CITO_API_KEY não existe mais aqui.
+   CITO_MIDDLEWARE_URL=http://localhost:3005
+
+   # Chave interna enviada no header x-internal-key ao chamar o middleware.
+   # Precisa ser igual ao MIDDLEWARE_INTERNAL_KEY do .env do ufc-alarm-middleware.
+   CITO_MIDDLEWARE_INTERNAL_KEY=
 
    # Segredo usado para assinar o cookie de sessão (JWT). Gere com:
    #   openssl rand -base64 32
@@ -122,9 +130,11 @@ nenhuma na mão.
   account/ProfileForm.tsx, account/AlarmList.tsx
 
 /lib
-  api/citoClient.ts, api/events.ts     -- cliente da Cito API (eventos/lutas) + normalização pros tipos do app
-  live/citoLiveClient.ts               -- cliente da Cito API "ao vivo", com cache manual de curto prazo
+  api/citoClient.ts, api/events.ts     -- cliente do ufc-alarm-middleware (eventos/lutas) + normalização pros tipos do app
+  live/citoLiveClient.ts               -- reexport do client "ao vivo" com o guard server-only (ver lib/shared/ abaixo)
   live/alarmLiveStatus.ts              -- decide quais alarmes vale a pena checar e monta a resposta do polling
+  shared/citoLiveFetch.ts              -- cliente HTTP do endpoint "ao vivo" do middleware, sem cache local (o TTL/fail-soft
+                                           mora no middleware); sem server-only de propósito, é reusado por scripts fora do Next
   auth/session.ts, auth/dal.ts,
   auth/actions.ts, auth/validation.ts  -- sessão (JWT/cookie), leitura do usuário logado, Server Actions de auth
   alarms/queries.ts, alarms/actions.ts,
@@ -142,18 +152,20 @@ nenhuma na mão.
 
 ## Como funciona
 
-### Eventos e lutas (Cito API)
+### Eventos e lutas (via ufc-alarm-middleware)
 
-Todas as chamadas à Cito API acontecem só no servidor (`lib/api/citoClient.ts`
-e `lib/live/citoLiveClient.ts`, ambos com `import "server-only"`) — a chave
-nunca chega ao navegador. As páginas (`app/page.tsx`,
-`app/eventos/[slug]/page.tsx`) chamam `lib/api/events.ts` diretamente como
-Server Components, sem passar pelos route handlers em `/app/api` (esses
-existem só como camada HTTP explícita, caso algo precise buscar do lado do
-cliente no futuro).
+Este projeto não fala mais com a Cito API diretamente. Todas as chamadas
+saem do servidor (`lib/api/citoClient.ts`, com `import "server-only"`) em
+direção ao `ufc-alarm-middleware` (`CITO_MIDDLEWARE_URL`, autenticado com o
+header `x-internal-key`) — só o middleware conhece a `CITO_API_KEY` de
+verdade. As páginas (`app/page.tsx`, `app/eventos/[slug]/page.tsx`) chamam
+`lib/api/events.ts` diretamente como Server Components, sem passar pelos
+route handlers em `/app/api` (esses existem só como camada HTTP explícita,
+caso algo precise buscar do lado do cliente no futuro).
 
-Detalhes descobertos testando a API de verdade (documentados também no
-código, em `lib/api/events.ts`):
+Detalhes descobertos testando a API da Cito de verdade — continuam válidos
+porque o middleware apenas repassa a resposta, sem alterar o formato
+(documentados também no código, em `lib/api/events.ts`):
 
 - `GET /ufc/events` mistura eventos passados e futuros, mais alguns
   registros de lixo residual. O parâmetro `hasStats=true` filtra eventos
@@ -166,8 +178,13 @@ código, em `lib/api/events.ts`):
   usados.
 - Odds (`odds.red`/`odds.blue`) existe na estrutura mas vem `null` na
   prática — só renderiza se os dois valores estiverem presentes.
-- Cota da free tier: **500 requisições/mês**. Por isso as páginas usam
-  `revalidate` de 30–60 minutos em vez de buscar a cada acesso.
+- Cota da free tier da Cito: **500 requisições/mês**, compartilhada por
+  **todos** os consumidores (este app web, o worker mobile, etc). Quem
+  garante isso hoje é o cache do próprio `ufc-alarm-middleware` (1h para
+  eventos, 30min para stats — ver `../ufc-alarm-middleware/README.md`), não
+  mais um cache neste projeto. O `revalidate` de 30–60 minutos usado aqui
+  nas chamadas `fetch` é só uma camada extra local, redundante com o cache
+  do middleware.
 
 ### Contas e sessão
 
@@ -201,14 +218,18 @@ Esta é a parte mais elaborada do projeto — vale explicar o fluxo completo:
    `fightMetricId` — **não** o campo `boutId` do mesmo objeto, que vem com
    um prefixo `"ufc-"` diferente.
 
-2. **Cache no servidor** (`lib/live/citoLiveClient.ts`): como a cota da
-   Cito é de só 500 req/mês, esse endpoint não pode ser chamado a cada
-   segundo. Existe um cache manual (não é o cache de `fetch`/`revalidate`
-   do Next, é um `Map` guardado em `globalThis` pra sobreviver ao hot
-   reload do `next dev`) com TTL de 90 segundos, compartilhado entre
-   **todos** os usuários e abas — não importa quantas pessoas estejam
-   olhando o mesmo evento, só uma chamada à Cito acontece por janela de
-   90s.
+2. **Cache centralizado no middleware** (`lib/shared/citoLiveFetch.ts` aqui,
+   cache de verdade em `ufc-alarm-middleware/src/cito/cache.ts`): como a
+   cota da Cito é de só 500 req/mês, esse endpoint não pode ser chamado a
+   cada segundo. Esse cache (TTL de 90s, com fail-soft — devolve o último
+   valor bom conhecido se a Cito falhar) não vive mais neste projeto: é uma
+   única instância do `ufc-alarm-middleware` que atende todos os
+   consumidores (este app web, worker mobile, réplicas do front, etc), então
+   não importa quantos usuários ou processos estejam checando o mesmo
+   evento, só uma chamada à Cito acontece por janela de 90s no total. O
+   `citoLiveFetch.ts` deste projeto é só um cliente HTTP fino do middleware,
+   sem cache próprio — só retorna `null` se o middleware em si estiver
+   inacessível.
 
 3. **Janela de checagem** (`lib/alarms/constants.ts`,
    `lib/live/alarmLiveStatus.ts`): só vale a pena checar a Cito se o alarme
@@ -285,7 +306,8 @@ CREATE TABLE alarms (
 
 | Variável | Obrigatória | Descrição |
 |---|---|---|
-| `CITO_API_KEY` | Sim | Chave da Cito API, enviada no header `x-api-key`. Só usada no servidor. |
+| `CITO_MIDDLEWARE_URL` | Sim | URL do `ufc-alarm-middleware` (ex: `http://localhost:3005`). Este projeto não tem mais `CITO_API_KEY`. |
+| `CITO_MIDDLEWARE_INTERNAL_KEY` | Sim | Chave enviada no header `x-internal-key` ao middleware. Deve bater com o `MIDDLEWARE_INTERNAL_KEY` do middleware. |
 | `SESSION_SECRET` | Sim | Segredo pra assinar o cookie de sessão. Gere com `openssl rand -base64 32`. |
 | `DEV_FORCE_LIVE_ALARM_IDS` | Não | Só em dev — força alarmes específicos a "tocarem" pra testar sem evento ao vivo real. |
 
