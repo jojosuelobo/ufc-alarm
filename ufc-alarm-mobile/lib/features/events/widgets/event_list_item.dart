@@ -46,12 +46,12 @@ class EventListItem extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             if (event.mainEvent != null) ...[
-              FighterAvatar(fighter: event.mainEvent!.fighterRed, size: AvatarSize.xs),
+              FighterAvatar(fighter: event.mainEvent!.fighterRed, size: AvatarSize.sm),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 6),
                 child: Text('X', style: TextStyle(color: AppColors.muted)),
               ),
-              FighterAvatar(fighter: event.mainEvent!.fighterBlue, size: AvatarSize.xs),
+              FighterAvatar(fighter: event.mainEvent!.fighterBlue, size: AvatarSize.sm),
               const SizedBox(width: 12),
             ],
             Expanded(
@@ -68,8 +68,6 @@ class EventListItem extends StatelessWidget {
                   ),
                   Text(
                     event.shortTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                   ),
                   if (event.location != null)

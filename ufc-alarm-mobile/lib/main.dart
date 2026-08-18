@@ -104,7 +104,6 @@ class _RootTabsState extends State<RootTabs> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _index == 0 ? AppBar(title: const Text('UFC Alarm')) : null,
       body: SafeArea(child: _screens[_index]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,

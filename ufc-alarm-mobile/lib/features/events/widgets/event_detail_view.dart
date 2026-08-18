@@ -71,19 +71,25 @@ class EventDetailView extends ConsumerWidget {
       children: [
         Text(
           event.promotionLabel,
+          textAlign: TextAlign.center,
           style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700),
         ),
         Text(
           event.shortTitle,
+          textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
         ),
         if (event.location != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(event.location!, style: const TextStyle(color: AppColors.muted)),
+            child: Text(
+              event.location!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.muted),
+            ),
           ),
         const SizedBox(height: 16),
-        EventCountdown(targetDate: event.date, isLive: liveStatus.isEventLive),
+        Center(child: EventCountdown(targetDate: event.date, isLive: liveStatus.isEventLive)),
         const SizedBox(height: 24),
         if (event.mainEvent != null) ...[
           const _SectionLabel('Luta Principal'),

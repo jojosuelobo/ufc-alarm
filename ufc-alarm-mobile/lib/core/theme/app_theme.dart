@@ -28,6 +28,25 @@ ThemeData buildAppTheme() {
       elevation: 0,
       surfaceTintColor: Colors.transparent,
     ),
+    navigationBarTheme: NavigationBarThemeData(
+      height: 64,
+      backgroundColor: AppColors.background,
+      surfaceTintColor: Colors.transparent,
+      indicatorColor: AppColors.accent,
+      indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
+        return TextStyle(
+          fontSize: 11,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          color: selected ? AppColors.accent : AppColors.muted,
+        );
+      }),
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
+        return IconThemeData(color: selected ? Colors.white : AppColors.muted);
+      }),
+    ),
     textTheme: const TextTheme().apply(
       bodyColor: AppColors.foreground,
       displayColor: AppColors.foreground,

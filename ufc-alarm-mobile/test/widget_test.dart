@@ -28,7 +28,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('UFC Alarm'), findsOneWidget);
     expect(find.text('Início'), findsOneWidget);
     expect(find.text('Eventos'), findsOneWidget);
     expect(find.text('Meus Alarmes'), findsOneWidget);

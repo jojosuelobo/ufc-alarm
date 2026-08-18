@@ -16,7 +16,6 @@ class EventsListScreen extends ConsumerWidget {
     final eventsAsync = ref.watch(upcomingEventsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Eventos')),
       body: eventsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
