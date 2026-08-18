@@ -1,6 +1,5 @@
 import Image from "next/image";
 import type { Fighter } from "@/types/domain";
-import { initials } from "@/lib/format";
 
 interface FighterAvatarProps {
   fighter: Fighter;
@@ -31,16 +30,19 @@ const PORTRAIT_DIMENSIONS: Record<NonNullable<FighterAvatarProps["size"]>, strin
   lg: "h-48 w-36 sm:h-64 sm:w-48",
 };
 
-const INITIALS_TEXT: Record<NonNullable<FighterAvatarProps["size"]>, string> = {
-  xs: "text-base",
-  sm: "text-xl",
-  lg: "text-2xl",
-};
-
 const IMAGE_SIZES: Record<NonNullable<FighterAvatarProps["size"]>, string> = {
   xs: "80px",
   sm: "128px",
   lg: "192px",
+};
+
+/** Placeholder oficial do UFC.com (silhueta full-body, mesmo formato/aspecto
+ * das fotos reais) — a própria Cito já usa essa imagem como "foto" de
+ * lutadores sem headshot cadastrado. Baixada localmente para não depender
+ * de ufc.com em runtime. */
+const DEFAULT_PHOTO: Record<Fighter["corner"], string> = {
+  red: "/fighters/shadow-fighter-red.png",
+  blue: "/fighters/shadow-fighter-blue.png",
 };
 
 export default function FighterAvatar({
@@ -57,23 +59,13 @@ export default function FighterAvatar({
         isPortrait ? "" : "rounded-full border-2 border-border bg-surface-raised"
       }`}
     >
-      {fighter.photoUrl ? (
-        <Image
-          src={fighter.photoUrl}
-          alt={fighter.name}
-          fill
-          sizes={IMAGE_SIZES[size]}
-          className="object-cover object-top"
-        />
-      ) : (
-        <div
-          className={`flex h-full w-full items-center justify-center font-heading text-muted ${
-            isPortrait ? "rounded-full bg-surface-raised" : ""
-          } ${INITIALS_TEXT[size]}`}
-        >
-          {initials(fighter.name)}
-        </div>
-      )}
+      <Image
+        src={fighter.photoUrl ?? DEFAULT_PHOTO[fighter.corner]}
+        alt={fighter.name}
+        fill
+        sizes={IMAGE_SIZES[size]}
+        className="object-cover object-top"
+      />
     </div>
   );
 }

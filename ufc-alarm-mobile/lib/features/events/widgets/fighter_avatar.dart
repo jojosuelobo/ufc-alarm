@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/fighter.dart';
-import '../../../utils/format.dart';
 
 enum AvatarSize { xs, sm, lg }
 
@@ -43,30 +42,29 @@ class FighterAvatar extends StatelessWidget {
         AvatarSize.lg => _isPortrait ? 208 : 144,
       };
 
-  double get _fontSize => switch (size) {
-        AvatarSize.xs => 16,
-        AvatarSize.sm => 20,
-        AvatarSize.lg => 24,
-      };
+  /// Placeholder oficial do UFC.com (silhueta full-body, mesmo formato/aspecto
+  /// das fotos reais) — a própria Cito já usa essa imagem como "foto" de
+  /// lutadores sem headshot cadastrado. Empacotada localmente como asset.
+  String get _defaultPhotoAsset => fighter.corner == 'blue'
+      ? 'assets/fighters/shadow-fighter-blue.png'
+      : 'assets/fighters/shadow-fighter-red.png';
 
   @override
   Widget build(BuildContext context) {
+    final defaultImage = Image.asset(
+      _defaultPhotoAsset,
+      fit: BoxFit.cover,
+      alignment: Alignment.topCenter,
+    );
+
     final image = fighter.photoUrl != null
         ? CachedNetworkImage(
             imageUrl: fighter.photoUrl!,
             fit: BoxFit.cover,
             alignment: Alignment.topCenter,
-            errorWidget: (context, url, error) => _InitialsFallback(
-              text: initials(fighter.name),
-              fontSize: _fontSize,
-              circular: _isPortrait,
-            ),
+            errorWidget: (context, url, error) => defaultImage,
           )
-        : _InitialsFallback(
-            text: initials(fighter.name),
-            fontSize: _fontSize,
-            circular: _isPortrait,
-          );
+        : defaultImage;
 
     if (_isPortrait) {
       return SizedBox(width: _width, height: _height, child: image);
@@ -83,32 +81,6 @@ class FighterAvatar extends StatelessWidget {
         ),
         child: image,
       ),
-    );
-  }
-}
-
-class _InitialsFallback extends StatelessWidget {
-  final String text;
-  final double fontSize;
-  final bool circular;
-  const _InitialsFallback({required this.text, required this.fontSize, this.circular = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final content = Center(
-      child: Text(
-        text,
-        style: TextStyle(
-          color: AppColors.muted,
-          fontSize: fontSize,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-    if (!circular) return content;
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: AppColors.surfaceRaised, shape: BoxShape.circle),
-      child: content,
     );
   }
 }
