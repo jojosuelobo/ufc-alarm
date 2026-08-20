@@ -7,6 +7,7 @@ import type {
   CitoEventStatsResponse,
 } from "@/types/cito";
 import type { Fight, Fighter, UpcomingEvent } from "@/types/domain";
+import { ALARM_LIVE_WINDOW_POST_HOURS } from "@/lib/shared/alarmWindow";
 
 function promotionLabel(title: string): string {
   return /^UFC \d/.test(title) ? "UFC" : "UFC Fight Night";
@@ -90,17 +91,30 @@ function mapEventBase(e: {
  * rows (title "Search results", startsAt null) and is NOT sorted by date.
  * `hasStats=true` filters to events that already have post-fight stats —
  * i.e. events that already happened — so it must not be used for "upcoming".
+ *
+ * Cito's "live" status is sticky: it doesn't reliably flip to anything else
+ * once the card is actually over, so a finished event can sit at "live" for
+ * days. Sorting soonest-first then puts that stale event ahead of every
+ * genuinely upcoming one, since its startsAt is the oldest in the list —
+ * the home page gets stuck showing an event that already ended. A "live"
+ * event is only trusted within the same post-start grace window used for
+ * alarm live-status checks (`ALARM_LIVE_WINDOW_POST_HOURS`); past that, it's
+ * treated as over and dropped like any other non-scheduled event.
  */
 export async function getUpcomingEvents(): Promise<UpcomingEvent[]> {
   const res = await getCitoEvents<CitoEventListResponse>({ limit: 50 });
+  const now = Date.now();
 
   return res.data
-    .filter(
-      (e) =>
-        (e.status === "scheduled" || e.status === "live") &&
-        e.startsAt !== null &&
-        e.title !== "Search results",
-    )
+    .filter((e) => {
+      if (e.startsAt === null || e.title === "Search results") return false;
+      if (e.status === "scheduled") return true;
+      if (e.status === "live") {
+        const hoursSinceStart = (now - new Date(e.startsAt).getTime()) / 3_600_000;
+        return hoursSinceStart <= ALARM_LIVE_WINDOW_POST_HOURS;
+      }
+      return false;
+    })
     .sort(
       (a, b) => new Date(a.startsAt!).getTime() - new Date(b.startsAt!).getTime(),
     )
