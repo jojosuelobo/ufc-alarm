@@ -51,7 +51,15 @@ export default function EventCountdown({ targetDate, isLive = false }: EventCoun
     };
   }, [targetDate]);
 
-  if (isLive) {
+  // The server's live status can take a moment to confirm (polling starts
+  // on mount) — until then, fall back to a client-clock check so the badge
+  // shows immediately once the scheduled start time has passed instead of
+  // a frozen 00:00:00. `targetDate` is a deterministic prop from the
+  // server, so this doesn't introduce a hydration mismatch the way reading
+  // `Date.now()` for `remaining` would.
+  const isLiveNow = isLive || (targetDate != null && targetDate.getTime() <= Date.now());
+
+  if (isLiveNow) {
     return (
       <div className="flex items-center gap-2">
         <span className="h-2.5 w-2.5 rounded-full bg-accent" />

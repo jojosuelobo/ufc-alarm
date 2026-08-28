@@ -70,7 +70,14 @@ class _EventCountdownState extends State<EventCountdown> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.isLive) {
+    // The server's live status can take a moment to confirm (or, on a
+    // failed first poll, up to 30s until the next retry) — until then,
+    // fall back to a local time check so the badge shows immediately once
+    // the scheduled start time has passed instead of a frozen 00:00:00.
+    final isLiveNow = widget.isLive ||
+        (widget.targetDate != null && !widget.targetDate!.isAfter(DateTime.now()));
+
+    if (isLiveNow) {
       return const _LiveBadge();
     }
 
