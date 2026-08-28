@@ -2,13 +2,16 @@ import { getEventBySlug, getUpcomingEvents } from "@/lib/api/events";
 import { groupEventsByPeriod } from "@/lib/dates";
 import EventListItem from "@/components/EventListItem";
 
-export const revalidate = 3600;
+// Event data is always fetched fresh (ufc-alarm-middleware is the single
+// cache layer, see lib/api/citoClient.ts) — ISR here would let the page
+// serve a stale event list instantly instead of ever showing loading.tsx.
+export const dynamic = "force-dynamic";
 
 export default async function EventosPage() {
   const events = await getUpcomingEvents();
   // The list endpoint doesn't include bout/fighter data, so fetch each
-  // event's stats (already cached per-event with its own revalidate) to
-  // show the main-event fighter thumbnails in each row.
+  // event's stats (cached in ufc-alarm-middleware) to show the main-event
+  // fighter thumbnails in each row.
   const detailedEvents = await Promise.all(
     events.map(async (event) => (await getEventBySlug(event.slug)) ?? event),
   );

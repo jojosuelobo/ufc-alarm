@@ -4,7 +4,10 @@ import { getCurrentUser } from "@/lib/auth/dal";
 import { getActiveAlarmBoutIds } from "@/lib/alarms/queries";
 import EventDetailView from "@/components/EventDetailView";
 
-export const revalidate = 1800;
+// Event data is always fetched fresh (ufc-alarm-middleware is the single
+// cache layer, see lib/api/citoClient.ts) — ISR here would let the page
+// serve a stale event instantly instead of ever showing loading.tsx.
+export const dynamic = "force-dynamic";
 
 export default async function EventDetailPage({
   params,

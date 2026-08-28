@@ -10,10 +10,10 @@ export class CitoApiError extends Error {
   }
 }
 
-async function citoFetch<T>(
-  path: string,
-  { revalidate }: { revalidate: number },
-): Promise<T> {
+// Caching is centralized in ufc-alarm-middleware's own TTL cache (see its
+// README) — this client always fetches fresh from it rather than adding a
+// second, uncoordinated cache layer on top via Next.js's fetch/route cache.
+async function citoFetch<T>(path: string): Promise<T> {
   if (!MIDDLEWARE_URL || !MIDDLEWARE_KEY) {
     throw new CitoApiError("Middleware da Cito não configurado no servidor.");
   }
@@ -22,7 +22,7 @@ async function citoFetch<T>(
   try {
     res = await fetch(`${MIDDLEWARE_URL}${path}`, {
       headers: { "x-internal-key": MIDDLEWARE_KEY },
-      next: { revalidate },
+      cache: "no-store",
     });
   } catch {
     throw new CitoApiError("Não foi possível conectar ao middleware da Cito.");
@@ -43,11 +43,9 @@ export function getCitoEvents<T>(params: {
     page: String(params.page ?? 1),
     limit: String(params.limit ?? 50),
   });
-  return citoFetch<T>(`/api/cito/events?${search}`, { revalidate: 3600 });
+  return citoFetch<T>(`/api/cito/events?${search}`);
 }
 
 export function getCitoEventStats<T>(slugOrId: string): Promise<T> {
-  return citoFetch<T>(`/api/cito/events/${slugOrId}/stats`, {
-    revalidate: 1800,
-  });
+  return citoFetch<T>(`/api/cito/events/${slugOrId}/stats`);
 }
