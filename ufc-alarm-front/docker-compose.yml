@@ -4,6 +4,16 @@ services:
       context: .
       dockerfile: Dockerfile
     env_file: .env.local
+    # Pins Node's local-time interpretation (Date#getDate/getMonth/etc.,
+    # toLocaleDateString without an explicit timeZone) to Brazil instead of
+    # whatever the container's OS default happens to be (Alpine's is UTC).
+    # lib/dates.ts computes "days until an event" from calendar-day
+    # differences using these local getters, so near UTC midnight (still
+    # evening in Brazil) it was flipping to the next calendar day a few
+    # hours early and undercounting by one — e.g. showing "Em 4 dias" for
+    # an event 5 Brasília-calendar-days out.
+    environment:
+      - TZ=America/Sao_Paulo
     ports:
       - "3004:3000"
     volumes:
@@ -15,6 +25,8 @@ services:
       context: .
       dockerfile: Dockerfile
     env_file: .env.local
+    environment:
+      - TZ=America/Sao_Paulo
     command: ["node_modules/.bin/tsx", "scripts/mobile-alarm-worker.ts"]
     volumes:
       - ufc_alarm_data:/app/.data
