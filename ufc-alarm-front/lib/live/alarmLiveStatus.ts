@@ -1,7 +1,7 @@
 import "server-only";
 import { getActiveAlarmsForUser, type AlarmListItem } from "@/lib/alarms/queries";
 import { ALARM_LIVE_WINDOW_POST_HOURS, ALARM_LIVE_WINDOW_PRE_MINUTES } from "@/lib/alarms/constants";
-import { getLiveEventStatus, type CitoLiveEventData } from "./citoLiveClient";
+import { findLiveTrackingByFighterNames, getLiveEventStatus, type CitoLiveEventData } from "./citoLiveClient";
 
 export interface AlarmLiveStatus {
   alarmId: number;
@@ -27,7 +27,11 @@ function toAlarmLiveStatus(
   alarm: AlarmListItem,
   eventData: CitoLiveEventData | null | undefined,
 ): AlarmLiveStatus {
-  const bout = eventData?.tracking.find((t) => t.fightMetricId === alarm.boutId);
+  const bout = findLiveTrackingByFighterNames(
+    eventData?.tracking,
+    alarm.fighterRedName,
+    alarm.fighterBlueName,
+  );
   return {
     alarmId: alarm.id,
     eventSlug: alarm.eventSlug,

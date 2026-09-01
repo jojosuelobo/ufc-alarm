@@ -5,7 +5,15 @@ export interface CitoLiveBoutTracking {
   entity_type: string;
   /** Prefixed with "ufc-" — do NOT match this against alarms.bout_id. */
   boutId: string;
-  /** Matches alarms.bout_id (the plain Cito bout id) — match on this. */
+  /**
+   * NOT the same id as alarms.bout_id, despite the name similarity —
+   * alarms.bout_id is the hex `id` from GET /api/cito/events/:slug/stats
+   * (see mapBout in lib/api/events.ts), while this is Cito's own numeric
+   * FightMetric id, which the stats endpoint never exposes anywhere. There
+   * is no shared id between the two endpoints; use
+   * findLiveTrackingByFighterNames below instead, which joins on the one
+   * field both endpoints agree on (fighter full name).
+   */
   fightMetricId: string;
   status: string;
   currentRound?: number;
@@ -24,6 +32,43 @@ export interface CitoLiveEventData {
 
 interface MiddlewareLiveResponse {
   data: CitoLiveEventData | null;
+}
+
+/**
+ * Cito's live-tracking fighter names aren't always accented the same way as
+ * the event/stats endpoint's ("Joel Alvarez" vs "Joel Álvarez") — strip
+ * diacritics and case before comparing so that alone doesn't break the join
+ * below.
+ */
+function normalizeFighterName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * GET /api/cito/events/:slug/stats (what alarms.bout_id and Fight.boutId
+ * come from) and GET /api/cito/live/:slug (this module) key bouts with two
+ * entirely different id schemes and expose no field that maps one to the
+ * other — fighter full name is the only value both responses carry for the
+ * same bout, so it's what's used to find a live-tracking row for a stored
+ * alarm or a Fight.
+ */
+export function findLiveTrackingByFighterNames(
+  tracking: CitoLiveBoutTracking[] | undefined,
+  fighterRedName: string,
+  fighterBlueName: string,
+): CitoLiveBoutTracking | undefined {
+  const red = normalizeFighterName(fighterRedName);
+  const blue = normalizeFighterName(fighterBlueName);
+  return tracking?.find((t) => {
+    const names = [t.red?.fighterName, t.blue?.fighterName].map((n) =>
+      n ? normalizeFighterName(n) : "",
+    );
+    return names.includes(red) && names.includes(blue);
+  });
 }
 
 /**

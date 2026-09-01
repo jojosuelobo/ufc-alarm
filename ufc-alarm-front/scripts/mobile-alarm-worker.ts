@@ -23,7 +23,7 @@ import Database from "better-sqlite3";
 import { initializeApp, cert } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
 import { getLiveWindowBounds } from "../lib/shared/alarmWindow";
-import { getLiveEventStatus } from "../lib/shared/citoLiveFetch";
+import { findLiveTrackingByFighterNames, getLiveEventStatus } from "../lib/shared/citoLiveFetch";
 
 // --- Minimal .env.local loader -------------------------------------------
 // Next.js auto-loads .env.local for the `web` process; this standalone
@@ -199,7 +199,11 @@ async function tick(): Promise<void> {
 
   for (const alarm of needsRealCheck) {
     const eventData = statusBySlug.get(alarm.event_slug);
-    const bout = eventData?.tracking.find((t) => t.fightMetricId === alarm.bout_id);
+    const bout = findLiveTrackingByFighterNames(
+      eventData?.tracking,
+      alarm.fighter_red_name,
+      alarm.fighter_blue_name,
+    );
     if (bout?.status === "live") {
       await sendAlarmPush(alarm);
     }
