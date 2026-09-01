@@ -9,7 +9,8 @@ import EventDetailView from "@/components/EventDetailView";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const events = await getUpcomingEvents();
+  const user = await getCurrentUser();
+  const events = await getUpcomingEvents({ includeExtraEvents: user?.showExtraEvents });
 
   if (events.length === 0) {
     return (
@@ -20,7 +21,6 @@ export default async function HomePage() {
   }
 
   const event = (await getEventBySlug(events[0].slug)) ?? events[0];
-  const user = await getCurrentUser();
   const activeAlarmBoutIds = user ? getActiveAlarmBoutIds(user.id, event.slug) : new Set<string>();
 
   return (

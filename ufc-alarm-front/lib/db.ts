@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash   TEXT NOT NULL,
   preferred_name  TEXT,
   phone           TEXT,
+  show_extra_events INTEGER NOT NULL DEFAULT 0,
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -67,6 +68,15 @@ function connect(): Database.Database {
   conn.pragma("journal_mode = WAL");
   conn.pragma("foreign_keys = ON");
   conn.exec(SCHEMA_SQL);
+
+  // CREATE TABLE IF NOT EXISTS above only creates `users` from scratch — it
+  // doesn't add columns to a `users` table that already exists from before
+  // this field was introduced, so that case needs an explicit migration.
+  const userColumns = conn.prepare(`PRAGMA table_info(users)`).all() as { name: string }[];
+  if (!userColumns.some((c) => c.name === "show_extra_events")) {
+    conn.exec(`ALTER TABLE users ADD COLUMN show_extra_events INTEGER NOT NULL DEFAULT 0`);
+  }
+
   return conn;
 }
 

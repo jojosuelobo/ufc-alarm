@@ -13,6 +13,16 @@ function promotionLabel(title: string): string {
   return /^UFC \d/.test(title) ? "UFC" : "UFC Fight Night";
 }
 
+// Matches titles like "Dana White's Contender Series 10.4", "Road To UFC",
+// "Road to UFC Season 4 Semifinals" and "UFC - Road to UFC 4.6" — Cito
+// doesn't expose a separate event-type/category field, so title text is the
+// only signal available to tell these apart from numbered/Fight Night cards.
+const EXTRA_EVENT_PATTERN = /dana white'?s contender series|road to ufc/i;
+
+function isExtraEvent(title: string): boolean {
+  return EXTRA_EVENT_PATTERN.test(title);
+}
+
 function mapFighter(f: CitoBoutFighter): Fighter {
   return {
     name: f.fighterName,
@@ -100,14 +110,24 @@ function mapEventBase(e: {
  * event is only trusted within the same post-start grace window used for
  * alarm live-status checks (`ALARM_LIVE_WINDOW_POST_HOURS`); past that, it's
  * treated as over and dropped like any other non-scheduled event.
+ *
+ * `includeExtraEvents` controls whether DWCS and Road to UFC cards are kept
+ * in the list — off by default, matching the "Exibir eventos extras?"
+ * account preference's own default, so callers that don't have a logged-in
+ * user to check (or forget to pass it) fail closed instead of leaking these
+ * events into a listing that opted to hide them.
  */
-export async function getUpcomingEvents(): Promise<UpcomingEvent[]> {
+export async function getUpcomingEvents(
+  options?: { includeExtraEvents?: boolean },
+): Promise<UpcomingEvent[]> {
+  const includeExtraEvents = options?.includeExtraEvents ?? false;
   const res = await getCitoEvents<CitoEventListResponse>({ limit: 50 });
   const now = Date.now();
 
   return res.data
     .filter((e) => {
       if (e.startsAt === null || e.title === "Search results") return false;
+      if (!includeExtraEvents && isExtraEvent(e.title)) return false;
       if (e.status === "scheduled") return true;
       if (e.status === "live") {
         const hoursSinceStart = (now - new Date(e.startsAt).getTime()) / 3_600_000;

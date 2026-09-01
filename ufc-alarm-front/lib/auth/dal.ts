@@ -8,6 +8,7 @@ export interface SafeUser {
   email: string;
   preferredName: string | null;
   phone: string | null;
+  showExtraEvents: boolean;
 }
 
 interface UserRow {
@@ -15,6 +16,7 @@ interface UserRow {
   email: string;
   preferred_name: string | null;
   phone: string | null;
+  show_extra_events: number;
 }
 
 export const getCurrentUser = cache(async (): Promise<SafeUser | null> => {
@@ -22,7 +24,7 @@ export const getCurrentUser = cache(async (): Promise<SafeUser | null> => {
   if (!session) return null;
 
   const row = db
-    .prepare(`SELECT id, email, preferred_name, phone FROM users WHERE id = ?`)
+    .prepare(`SELECT id, email, preferred_name, phone, show_extra_events FROM users WHERE id = ?`)
     .get(session.userId) as UserRow | undefined;
 
   if (!row) return null;
@@ -32,5 +34,6 @@ export const getCurrentUser = cache(async (): Promise<SafeUser | null> => {
     email: row.email,
     preferredName: row.preferred_name,
     phone: row.phone,
+    showExtraEvents: Boolean(row.show_extra_events),
   };
 });

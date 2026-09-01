@@ -105,3 +105,23 @@ export async function updateProfileAction(
 
   revalidatePath("/minha-conta");
 }
+
+export async function setShowExtraEventsAction(
+  showExtraEvents: boolean,
+): Promise<{ ok: true } | { ok: false }> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { ok: false };
+  }
+
+  db.prepare(`UPDATE users SET show_extra_events = ? WHERE id = ?`).run(
+    showExtraEvents ? 1 : 0,
+    user.id,
+  );
+
+  revalidatePath("/minha-conta");
+  revalidatePath("/eventos");
+  revalidatePath("/");
+
+  return { ok: true };
+}

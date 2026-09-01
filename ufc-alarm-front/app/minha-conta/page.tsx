@@ -4,6 +4,7 @@ import { logoutAction } from "@/lib/auth/actions";
 import { getActiveAlarmsForUser } from "@/lib/alarms/queries";
 import ProfileForm from "@/components/account/ProfileForm";
 import AlarmList from "@/components/account/AlarmList";
+import ExtraEventsToggle from "@/components/account/ExtraEventsToggle";
 
 export default async function MinhaContaPage() {
   const user = await getCurrentUser();
@@ -31,6 +32,10 @@ export default async function MinhaContaPage() {
 
       <section className="mt-10">
         <ProfileForm user={user} />
+      </section>
+
+      <section className="mt-14">
+        <ExtraEventsToggle initialValue={user.showExtraEvents} />
       </section>
 
       <section className="mt-14">

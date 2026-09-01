@@ -1,4 +1,5 @@
 import { getEventBySlug, getUpcomingEvents } from "@/lib/api/events";
+import { getCurrentUser } from "@/lib/auth/dal";
 import { groupEventsByPeriod } from "@/lib/dates";
 import EventListItem from "@/components/EventListItem";
 
@@ -8,7 +9,8 @@ import EventListItem from "@/components/EventListItem";
 export const dynamic = "force-dynamic";
 
 export default async function EventosPage() {
-  const events = await getUpcomingEvents();
+  const user = await getCurrentUser();
+  const events = await getUpcomingEvents({ includeExtraEvents: user?.showExtraEvents });
   // The list endpoint doesn't include bout/fighter data, so fetch each
   // event's stats (cached in ufc-alarm-middleware) to show the main-event
   // fighter thumbnails in each row.
