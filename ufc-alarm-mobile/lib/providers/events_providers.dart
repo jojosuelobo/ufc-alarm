@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/live_status.dart';
 import '../models/upcoming_event.dart';
 import 'api_providers.dart';
+import 'settings_providers.dart';
 
 final upcomingEventsProvider = FutureProvider<List<UpcomingEvent>>((ref) async {
   final api = ref.watch(eventsApiProvider);
-  return api.getUpcomingEvents();
+  final showExtraEvents = await ref.watch(showExtraEventsProvider.future);
+  return api.getUpcomingEvents(includeExtraEvents: showExtraEvents);
 });
 
 final eventDetailProvider =

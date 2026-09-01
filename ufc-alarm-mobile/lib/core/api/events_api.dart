@@ -6,8 +6,13 @@ class EventsApi {
   final Dio _dio;
   const EventsApi(this._dio);
 
-  Future<List<UpcomingEvent>> getUpcomingEvents() async {
-    final res = await _dio.get('/api/events');
+  Future<List<UpcomingEvent>> getUpcomingEvents({bool includeExtraEvents = false}) async {
+    final res = await _dio.get(
+      '/api/events',
+      queryParameters: {
+        if (includeExtraEvents) 'includeExtraEvents': 'true',
+      },
+    );
     final events = (res.data['events'] as List<dynamic>)
         .map((e) => UpcomingEvent.fromJson(e as Map<String, dynamic>))
         .toList();

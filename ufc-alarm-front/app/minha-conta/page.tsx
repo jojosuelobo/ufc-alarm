@@ -34,7 +34,7 @@ export default async function MinhaContaPage() {
         <ProfileForm user={user} />
       </section>
 
-      <section className="mt-14">
+      <section className="mt-10 border-t border-border pt-6">
         <ExtraEventsToggle initialValue={user.showExtraEvents} />
       </section>
 
