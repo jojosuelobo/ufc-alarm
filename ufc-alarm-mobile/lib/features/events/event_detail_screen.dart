@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/widgets/error_state_view.dart';
 import '../../providers/events_providers.dart';
 import 'widgets/event_detail_view.dart';
 
@@ -18,8 +18,9 @@ class EventDetailScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Evento')),
       body: detailAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Text('Não foi possível carregar o evento.', style: const TextStyle(color: AppColors.muted)),
+        error: (error, _) => ErrorStateView(
+          message: 'Não foi possível carregar o evento. Tente novamente.',
+          onRetry: () => ref.invalidate(eventDetailProvider(slug)),
         ),
         data: (event) {
           if (event == null) {

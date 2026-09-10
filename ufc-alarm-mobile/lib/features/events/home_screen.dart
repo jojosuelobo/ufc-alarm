@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/error_state_view.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/events_providers.dart';
 import 'widgets/event_detail_view.dart';
@@ -16,15 +17,9 @@ class HomeScreen extends ConsumerWidget {
 
     return eventsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            'Não foi possível carregar o próximo evento.\n$error',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.muted),
-          ),
-        ),
+      error: (error, _) => ErrorStateView(
+        message: 'Não foi possível carregar o próximo evento. Tente novamente.',
+        onRetry: () => ref.invalidate(upcomingEventsProvider),
       ),
       data: (events) {
         if (events.isEmpty) {
@@ -36,8 +31,9 @@ class HomeScreen extends ConsumerWidget {
         final detailAsync = ref.watch(eventDetailProvider(nextSlug));
         return detailAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Center(
-            child: Text('Não foi possível carregar o evento.', style: const TextStyle(color: AppColors.muted)),
+          error: (error, _) => ErrorStateView(
+            message: 'Não foi possível carregar o evento. Tente novamente.',
+            onRetry: () => ref.invalidate(eventDetailProvider(nextSlug)),
           ),
           data: (event) {
             if (event == null) {

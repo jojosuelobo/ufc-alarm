@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/error_state_view.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/events_providers.dart';
 import '../../utils/dates.dart';
@@ -18,8 +19,9 @@ class EventsListScreen extends ConsumerWidget {
     return Scaffold(
       body: eventsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Text('Não foi possível carregar os eventos.', style: const TextStyle(color: AppColors.muted)),
+        error: (error, _) => ErrorStateView(
+          message: 'Não foi possível carregar os eventos. Tente novamente.',
+          onRetry: () => ref.invalidate(upcomingEventsProvider),
         ),
         data: (events) {
           final groups = groupEventsByPeriod(events);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/error_state_view.dart';
 import '../../providers/alarms_providers.dart';
 import '../../providers/api_providers.dart';
 import '../../providers/device_providers.dart';
@@ -39,8 +40,9 @@ class MyAlarmsScreen extends ConsumerWidget {
           Expanded(
             child: alarmsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Text('Não foi possível carregar seus alarmes.', style: TextStyle(color: AppColors.muted)),
+              error: (error, _) => ErrorStateView(
+                message: 'Não foi possível carregar seus alarmes. Tente novamente.',
+                onRetry: () => ref.invalidate(activeAlarmsProvider),
               ),
               data: (alarms) {
                 if (alarms.isEmpty) {

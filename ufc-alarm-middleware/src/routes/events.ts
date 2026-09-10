@@ -17,6 +17,8 @@ export async function eventsRoutes(app: FastifyInstance) {
       const cached = cache.get(cacheKey);
       if (cached) return cached;
 
+      const fallback = cache.getStale(cacheKey);
+
       try {
         const json = await citoGet<CitoEventListResponse>(
           `/api/v1/ufc/events?page=${page}&limit=${limit}`,
@@ -25,6 +27,10 @@ export async function eventsRoutes(app: FastifyInstance) {
         return json;
       } catch (error) {
         req.log.error({ err: error }, "Cito events falhou");
+        if (fallback) {
+          req.log.warn({ cacheKey }, "Cito events falhou — usando fallback");
+          return fallback;
+        }
         reply.code(502);
         return { success: false, error: "cito_unavailable" };
       }
