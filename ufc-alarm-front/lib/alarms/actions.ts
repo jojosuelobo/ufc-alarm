@@ -17,7 +17,7 @@ export interface ToggleAlarmInput {
 
 export type ToggleAlarmResult =
   | { ok: true; active: boolean }
-  | { ok: false; error: "unauthenticated" | "no_phone" };
+  | { ok: false; error: "unauthenticated" };
 
 interface AlarmIdRow {
   id: number;
@@ -27,9 +27,6 @@ export async function toggleAlarmAction(input: ToggleAlarmInput): Promise<Toggle
   const user = await getCurrentUser();
   if (!user) {
     return { ok: false, error: "unauthenticated" };
-  }
-  if (!user.phone) {
-    return { ok: false, error: "no_phone" };
   }
 
   const existing = db

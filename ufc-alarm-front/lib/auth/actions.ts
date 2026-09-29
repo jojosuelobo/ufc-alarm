@@ -106,6 +106,40 @@ export async function updateProfileAction(
   revalidatePath("/minha-conta");
 }
 
+const NOTIFICATION_CHANNEL_COLUMNS = {
+  site: "notify_site",
+  whatsapp: "notify_whatsapp",
+  discord: "notify_discord",
+  telegram: "notify_telegram",
+} as const;
+
+export type NotificationChannel = keyof typeof NOTIFICATION_CHANNEL_COLUMNS;
+
+export async function setNotificationChannelAction(
+  channel: NotificationChannel,
+  enabled: boolean,
+): Promise<{ ok: true } | { ok: false; error?: "no_phone" }> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { ok: false };
+  }
+
+  const column = NOTIFICATION_CHANNEL_COLUMNS[channel];
+  if (!column) {
+    return { ok: false };
+  }
+
+  if (channel === "whatsapp" && enabled && !user.phone) {
+    return { ok: false, error: "no_phone" };
+  }
+
+  db.prepare(`UPDATE users SET ${column} = ? WHERE id = ?`).run(enabled ? 1 : 0, user.id);
+
+  revalidatePath("/minha-conta");
+
+  return { ok: true };
+}
+
 export async function setShowExtraEventsAction(
   showExtraEvents: boolean,
 ): Promise<{ ok: true } | { ok: false }> {

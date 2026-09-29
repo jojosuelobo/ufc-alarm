@@ -36,7 +36,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <TopNav user={user} />
         <main className="flex-1">{children}</main>
-        <AlarmWatcher userId={user?.id ?? null} />
+        <AlarmWatcher userId={user?.id ?? null} enabled={user?.notifySite ?? true} />
       </body>
     </html>
   );

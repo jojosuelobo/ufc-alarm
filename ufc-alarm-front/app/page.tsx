@@ -27,7 +27,6 @@ export default async function HomePage() {
     <EventDetailView
       event={event}
       isLoggedIn={!!user}
-      hasPhone={!!user?.phone}
       activeAlarmBoutIds={activeAlarmBoutIds}
     />
   );

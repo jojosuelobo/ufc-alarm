@@ -11,7 +11,13 @@ interface LiveStatusResponse {
   alarms: AlarmLiveStatus[];
 }
 
-export default function AlarmWatcher({ userId }: { userId: number | null }) {
+export default function AlarmWatcher({
+  userId,
+  enabled,
+}: {
+  userId: number | null;
+  enabled: boolean;
+}) {
   const [queue, setQueue] = useState<AlarmLiveStatus[]>([]);
   const alertedRef = useRef<Set<number>>(new Set());
   const isFetchingRef = useRef(false);
@@ -41,11 +47,11 @@ export default function AlarmWatcher({ userId }: { userId: number | null }) {
   }, []);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !enabled) return;
     poll();
     const intervalId = setInterval(poll, POLL_INTERVAL_MS);
     return () => clearInterval(intervalId);
-  }, [userId, poll]);
+  }, [userId, enabled, poll]);
 
   // Broad safety net so the AudioContext is unlocked even in sessions where
   // the user never clicked a notification bell this visit (e.g. the alarm

@@ -5,6 +5,7 @@ import { getActiveAlarmsForUser } from "@/lib/alarms/queries";
 import ProfileForm from "@/components/account/ProfileForm";
 import AlarmList from "@/components/account/AlarmList";
 import ExtraEventsToggle from "@/components/account/ExtraEventsToggle";
+import NotificationChannelToggle from "@/components/account/NotificationChannelToggle";
 
 export default async function MinhaContaPage() {
   const user = await getCurrentUser();
@@ -36,6 +37,40 @@ export default async function MinhaContaPage() {
 
       <section className="mt-10 border-t border-border pt-6">
         <ExtraEventsToggle initialValue={user.showExtraEvents} />
+      </section>
+
+      <section className="mt-10 border-t border-border pt-6">
+        <p className="mb-4 font-heading text-xl uppercase tracking-wide sm:text-2xl">
+          Como você quer ser notificado?
+        </p>
+        <div className="flex flex-col gap-5">
+          <NotificationChannelToggle
+            channel="site"
+            initialValue={user.notifySite}
+            label="Notificação pelo site"
+            description="O site pisca e toca um som quando a luta começa."
+          />
+          <NotificationChannelToggle
+            channel="whatsapp"
+            initialValue={user.notifyWhatsapp}
+            label="WhatsApp"
+            description="Você recebe uma mensagem no WhatsApp assim que a luta for começar."
+            disabled={!user.phone}
+            disabledReason="Cadastre um telefone acima para ativar o WhatsApp."
+          />
+          <NotificationChannelToggle
+            channel="discord"
+            initialValue={user.notifyDiscord}
+            label="Discord"
+            description="Em breve: configure um bot para enviar a notificação a um canal específico."
+          />
+          <NotificationChannelToggle
+            channel="telegram"
+            initialValue={user.notifyTelegram}
+            label="Telegram"
+            description="Em breve: receba a notificação direto no Telegram."
+          />
+        </div>
       </section>
 
       <section className="mt-14">

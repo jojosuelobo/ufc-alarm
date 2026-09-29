@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS users (
   preferred_name  TEXT,
   phone           TEXT,
   show_extra_events INTEGER NOT NULL DEFAULT 0,
+  notify_site     INTEGER NOT NULL DEFAULT 1,
+  notify_whatsapp INTEGER NOT NULL DEFAULT 0,
+  notify_discord  INTEGER NOT NULL DEFAULT 0,
+  notify_telegram INTEGER NOT NULL DEFAULT 0,
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -75,6 +79,18 @@ function connect(): Database.Database {
   const userColumns = conn.prepare(`PRAGMA table_info(users)`).all() as { name: string }[];
   if (!userColumns.some((c) => c.name === "show_extra_events")) {
     conn.exec(`ALTER TABLE users ADD COLUMN show_extra_events INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!userColumns.some((c) => c.name === "notify_site")) {
+    conn.exec(`ALTER TABLE users ADD COLUMN notify_site INTEGER NOT NULL DEFAULT 1`);
+  }
+  if (!userColumns.some((c) => c.name === "notify_whatsapp")) {
+    conn.exec(`ALTER TABLE users ADD COLUMN notify_whatsapp INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!userColumns.some((c) => c.name === "notify_discord")) {
+    conn.exec(`ALTER TABLE users ADD COLUMN notify_discord INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!userColumns.some((c) => c.name === "notify_telegram")) {
+    conn.exec(`ALTER TABLE users ADD COLUMN notify_telegram INTEGER NOT NULL DEFAULT 0`);
   }
 
   return conn;

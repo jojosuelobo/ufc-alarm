@@ -15,7 +15,6 @@ interface FightCardProps {
   eventTitle: string;
   eventStartsAt: string | null;
   isLoggedIn: boolean;
-  hasPhone: boolean;
   activeAlarmBoutIds: Set<string>;
 }
 
@@ -70,7 +69,6 @@ export default function FightCard({
   eventTitle,
   eventStartsAt,
   isLoggedIn,
-  hasPhone,
   activeAlarmBoutIds,
 }: FightCardProps) {
   const weightClass = formatWeightClass(fight.weightClass);
@@ -98,7 +96,6 @@ export default function FightCard({
           <NotificationBellButton
             size={highlight ? "lg" : "sm"}
             isLoggedIn={isLoggedIn}
-            hasPhone={hasPhone}
             active={activeAlarmBoutIds.has(fight.boutId)}
             eventSlug={eventSlug}
             eventTitle={eventTitle}

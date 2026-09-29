@@ -8,7 +8,6 @@ import FightCard from "./FightCard";
 interface EventDetailViewProps {
   event: UpcomingEvent;
   isLoggedIn: boolean;
-  hasPhone: boolean;
   activeAlarmBoutIds: Set<string>;
 }
 
@@ -43,7 +42,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export default function EventDetailView({
   event,
   isLoggedIn,
-  hasPhone,
   activeAlarmBoutIds,
 }: EventDetailViewProps) {
   const eventStartsAt = event.date ? event.date.toISOString() : null;
@@ -52,7 +50,6 @@ export default function EventDetailView({
     eventTitle: event.title,
     eventStartsAt,
     isLoggedIn,
-    hasPhone,
     activeAlarmBoutIds,
   };
 

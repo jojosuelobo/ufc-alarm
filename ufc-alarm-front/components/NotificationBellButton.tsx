@@ -9,7 +9,6 @@ import PromptModal from "./PromptModal";
 interface NotificationBellButtonProps {
   size?: "sm" | "lg";
   isLoggedIn: boolean;
-  hasPhone: boolean;
   active: boolean;
   eventSlug: string;
   eventTitle: string;
@@ -23,7 +22,6 @@ interface NotificationBellButtonProps {
 export default function NotificationBellButton({
   size = "sm",
   isLoggedIn,
-  hasPhone,
   active,
   eventSlug,
   eventTitle,
@@ -36,7 +34,7 @@ export default function NotificationBellButton({
   const pathname = usePathname();
   const [isActive, setIsActive] = useState(active);
   const [prevActive, setPrevActive] = useState(active);
-  const [prompt, setPrompt] = useState<"login" | "phone" | null>(null);
+  const [prompt, setPrompt] = useState<"login" | null>(null);
   const [, startTransition] = useTransition();
 
   // Resync local (optimistic) state when the server-derived `active` prop
@@ -62,10 +60,6 @@ export default function NotificationBellButton({
       setPrompt("login");
       return;
     }
-    if (!hasPhone) {
-      setPrompt("phone");
-      return;
-    }
 
     const nextActive = !isActive;
     setIsActive(nextActive);
@@ -81,7 +75,7 @@ export default function NotificationBellButton({
       });
       if (!result.ok) {
         setIsActive(!nextActive);
-        setPrompt(result.error === "unauthenticated" ? "login" : "phone");
+        setPrompt("login");
         return;
       }
       setIsActive(result.active);
@@ -118,16 +112,6 @@ export default function NotificationBellButton({
           message="Você precisa estar logado para ativar alarmes de luta."
           actionLabel="Entrar ou criar conta"
           actionHref={`/login?redirectTo=${encodeURIComponent(pathname)}`}
-          onClose={() => setPrompt(null)}
-        />
-      )}
-
-      {prompt === "phone" && (
-        <PromptModal
-          title="Adicione um telefone"
-          message="Para receber notificações, adicione um número de telefone em Minha Conta."
-          actionLabel="Ir para Minha Conta"
-          actionHref="/minha-conta"
           onClose={() => setPrompt(null)}
         />
       )}
