@@ -28,21 +28,6 @@ export default function ProfileForm({ user }: { user: SafeUser }) {
         />
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="phone" className="text-sm font-semibold uppercase tracking-wide text-muted">
-          Telefone
-        </label>
-        <input
-          id="phone"
-          name="phone"
-          type="tel"
-          defaultValue={user.phone ?? ""}
-          maxLength={20}
-          placeholder="Necessário para receber notificações"
-          className="rounded-md border border-border bg-background px-4 py-3 text-base outline-none focus:border-accent"
-        />
-      </div>
-
       {state?.error && <p className="text-sm font-semibold text-accent">{state.error}</p>}
 
       <button

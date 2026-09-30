@@ -6,6 +6,8 @@ import ProfileForm from "@/components/account/ProfileForm";
 import AlarmList from "@/components/account/AlarmList";
 import ExtraEventsToggle from "@/components/account/ExtraEventsToggle";
 import NotificationChannelToggle from "@/components/account/NotificationChannelToggle";
+import DiscordWebhookForm from "@/components/account/DiscordWebhookForm";
+import PhoneForm from "@/components/account/PhoneForm";
 
 export default async function MinhaContaPage() {
   const user = await getCurrentUser();
@@ -50,20 +52,31 @@ export default async function MinhaContaPage() {
             label="Notificação pelo site"
             description="O site pisca e toca um som quando a luta começa."
           />
-          <NotificationChannelToggle
-            channel="whatsapp"
-            initialValue={user.notifyWhatsapp}
-            label="WhatsApp"
-            description="Você recebe uma mensagem no WhatsApp assim que a luta for começar."
-            disabled={!user.phone}
-            disabledReason="Cadastre um telefone acima para ativar o WhatsApp."
-          />
-          <NotificationChannelToggle
-            channel="discord"
-            initialValue={user.notifyDiscord}
-            label="Discord"
-            description="Em breve: configure um bot para enviar a notificação a um canal específico."
-          />
+          <div className="flex flex-col gap-3">
+            <NotificationChannelToggle
+              channel="whatsapp"
+              initialValue={user.notifyWhatsapp}
+              label="WhatsApp"
+              description="Você recebe uma mensagem no WhatsApp assim que a luta for começar."
+              disabled={!user.phone}
+              disabledReason="Cadastre um telefone abaixo para ativar o WhatsApp."
+            />
+            <PhoneForm initialValue={user.phone} />
+          </div>
+          <div className="flex flex-col gap-3">
+            <NotificationChannelToggle
+              channel="discord"
+              initialValue={user.notifyDiscord}
+              label="Discord"
+              description="Você recebe uma mensagem no canal do Discord assim que a luta for começar."
+              disabled={!user.discordWebhookUrl}
+              disabledReason="Cole a URL de um webhook do Discord abaixo para ativar."
+            />
+            <DiscordWebhookForm
+              initialValue={user.discordWebhookUrl}
+              initialMentionEveryone={user.discordMentionEveryone}
+            />
+          </div>
           <NotificationChannelToggle
             channel="telegram"
             initialValue={user.notifyTelegram}

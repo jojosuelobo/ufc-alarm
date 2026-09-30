@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import db from "@/lib/db";
 import { createSession, deleteSession } from "./session";
 import { getCurrentUser } from "./dal";
-import { isValidEmail, isValidPassword, safeRedirect } from "./validation";
+import { isValidDiscordWebhookUrl, isValidEmail, isValidPassword, safeRedirect } from "./validation";
 
 export type AuthActionState = { error: string } | undefined;
 
@@ -88,20 +88,31 @@ export async function updateProfileAction(
   }
 
   const preferredNameRaw = String(formData.get("preferredName") ?? "").trim();
-  const phoneRaw = String(formData.get("phone") ?? "").trim();
-
   const preferredName = preferredNameRaw.slice(0, 80) || null;
+
+  db.prepare(`UPDATE users SET preferred_name = ? WHERE id = ?`).run(preferredName, user.id);
+
+  revalidatePath("/minha-conta");
+  return;
+}
+
+export async function setPhoneAction(
+  _prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const phoneRaw = String(formData.get("phone") ?? "").trim();
   const phone = phoneRaw ? phoneRaw.slice(0, 20) : null;
 
   if (phone && (phone.length < 8 || phone.length > 20)) {
     return { error: "Telefone inválido." };
   }
 
-  db.prepare(`UPDATE users SET preferred_name = ?, phone = ? WHERE id = ?`).run(
-    preferredName,
-    phone,
-    user.id,
-  );
+  db.prepare(`UPDATE users SET phone = ? WHERE id = ?`).run(phone, user.id);
 
   revalidatePath("/minha-conta");
 }
@@ -118,7 +129,7 @@ export type NotificationChannel = keyof typeof NOTIFICATION_CHANNEL_COLUMNS;
 export async function setNotificationChannelAction(
   channel: NotificationChannel,
   enabled: boolean,
-): Promise<{ ok: true } | { ok: false; error?: "no_phone" }> {
+): Promise<{ ok: true } | { ok: false; error?: "no_phone" | "no_webhook" }> {
   const user = await getCurrentUser();
   if (!user) {
     return { ok: false };
@@ -132,12 +143,39 @@ export async function setNotificationChannelAction(
   if (channel === "whatsapp" && enabled && !user.phone) {
     return { ok: false, error: "no_phone" };
   }
+  if (channel === "discord" && enabled && !user.discordWebhookUrl) {
+    return { ok: false, error: "no_webhook" };
+  }
 
   db.prepare(`UPDATE users SET ${column} = ? WHERE id = ?`).run(enabled ? 1 : 0, user.id);
 
   revalidatePath("/minha-conta");
 
   return { ok: true };
+}
+
+export async function setDiscordWebhookAction(
+  _prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const raw = String(formData.get("discordWebhookUrl") ?? "").trim();
+  const url = raw || null;
+  const mentionEveryone = formData.get("discordMentionEveryone") === "on";
+
+  if (url && !isValidDiscordWebhookUrl(url)) {
+    return { error: "URL de webhook do Discord inválida." };
+  }
+
+  db.prepare(
+    `UPDATE users SET discord_webhook_url = ?, discord_mention_everyone = ? WHERE id = ?`,
+  ).run(url, mentionEveryone ? 1 : 0, user.id);
+
+  revalidatePath("/minha-conta");
 }
 
 export async function setShowExtraEventsAction(
