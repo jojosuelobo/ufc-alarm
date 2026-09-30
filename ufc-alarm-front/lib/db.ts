@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS users (
   notify_whatsapp INTEGER NOT NULL DEFAULT 0,
   notify_discord  INTEGER NOT NULL DEFAULT 0,
   notify_telegram INTEGER NOT NULL DEFAULT 0,
+  discord_webhook_url TEXT,
+  discord_mention_everyone INTEGER NOT NULL DEFAULT 0,
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -31,6 +33,7 @@ CREATE TABLE IF NOT EXISTS alarms (
   weight_class       TEXT,
   fighter_red_name   TEXT NOT NULL,
   fighter_blue_name  TEXT NOT NULL,
+  discord_notified_at TEXT,
   created_at         TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (user_id, event_slug, bout_id)
 );
@@ -91,6 +94,17 @@ function connect(): Database.Database {
   }
   if (!userColumns.some((c) => c.name === "notify_telegram")) {
     conn.exec(`ALTER TABLE users ADD COLUMN notify_telegram INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!userColumns.some((c) => c.name === "discord_webhook_url")) {
+    conn.exec(`ALTER TABLE users ADD COLUMN discord_webhook_url TEXT`);
+  }
+  if (!userColumns.some((c) => c.name === "discord_mention_everyone")) {
+    conn.exec(`ALTER TABLE users ADD COLUMN discord_mention_everyone INTEGER NOT NULL DEFAULT 0`);
+  }
+
+  const alarmColumns = conn.prepare(`PRAGMA table_info(alarms)`).all() as { name: string }[];
+  if (!alarmColumns.some((c) => c.name === "discord_notified_at")) {
+    conn.exec(`ALTER TABLE alarms ADD COLUMN discord_notified_at TEXT`);
   }
 
   return conn;

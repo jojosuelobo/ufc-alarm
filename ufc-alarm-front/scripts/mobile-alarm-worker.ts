@@ -1,17 +1,25 @@
 /**
- * Standalone background worker for anonymous mobile alarms.
+ * Standalone background worker for anonymous mobile alarms AND web-account
+ * Discord notifications.
  *
  * Runs as its own long-lived process (see docker-compose.yml's `worker`
  * service), separate from the Next.js `web` process, because Next.js route
  * handlers only run in response to a request and can't host a persistent
  * polling loop. Every tick (MOBILE_ALARM_WORKER_INTERVAL_MS) it looks at
- * every device_alarm that hasn't fired yet, but only actually calls Cito as
- * often as its event's proximity to go-live warrants — dormant (days/weeks
- * out) events are checked once an hour just to notice card changes, warm
- * (1-4h out) events every few minutes, and hot (<1h out through the
- * post-event grace window) events on every tick, since a bout could go live
- * any moment. This keeps quota usage low for events nobody's about to watch
- * yet without ever going fully silent on them. See tierFor/tick below.
+ * every device_alarm and web alarm that hasn't fired yet for its channel,
+ * but only actually calls Cito as often as its event's proximity to go-live
+ * warrants — dormant (days/weeks out) events are checked once an hour just
+ * to notice card changes, warm (1-4h out) events every few minutes, and hot
+ * (<1h out through the post-event grace window) events on every tick, since
+ * a bout could go live any moment. This keeps quota usage low for events
+ * nobody's about to watch yet without ever going fully silent on them. See
+ * tierFor/tick below.
+ *
+ * Mobile push (device_alarms/devices) and web Discord alerts (alarms/users)
+ * are two entirely separate delivery channels tied to the same underlying
+ * "is this bout live" question, so they share one Cito polling pass per
+ * event slug (via the AlarmTarget abstraction below) instead of each
+ * channel paying its own Cito quota to ask the same question twice.
  *
  * Cannot import lib/db.ts or lib/mobile/queries.ts directly — they're
  * guarded by `import "server-only"`, which throws outside the Next.js
@@ -129,6 +137,126 @@ function markNotified(alarmId: number): void {
   db.prepare(`UPDATE device_alarms SET notified_at = datetime('now') WHERE id = ?`).run(alarmId);
 }
 
+interface DueWebAlarmRow {
+  id: number;
+  discord_webhook_url: string;
+  discord_mention_everyone: number;
+  event_slug: string;
+  event_title: string;
+  event_starts_at: string;
+  weight_class: string | null;
+  fighter_red_name: string;
+  fighter_blue_name: string;
+}
+
+// Web accounts (users/alarms) are created and migrated by lib/db.ts in the
+// `web` process, not by this script — unlike devices/device_alarms above,
+// there's no CREATE TABLE here. On a fresh volume the `web` container
+// normally wins the race (it's the one serving traffic), but if this query
+// ever runs before those tables exist, better-sqlite3 throws — caught here
+// and treated as "nothing due yet" rather than crashing the tick.
+function getDueWebAlarms(now: Date): DueWebAlarmRow[] {
+  const windowStartIso = new Date(
+    now.getTime() - ALARM_LIVE_WINDOW_POST_HOURS * 3_600_000,
+  ).toISOString();
+  try {
+    return db
+      .prepare(
+        `SELECT a.id, u.discord_webhook_url, u.discord_mention_everyone, a.event_slug,
+                a.event_title, a.event_starts_at, a.weight_class,
+                a.fighter_red_name, a.fighter_blue_name
+         FROM alarms a
+         JOIN users u ON u.id = a.user_id
+         WHERE a.discord_notified_at IS NULL
+           AND u.notify_discord = 1
+           AND u.discord_webhook_url IS NOT NULL
+           AND a.event_starts_at IS NOT NULL
+           AND a.event_starts_at >= ?`,
+      )
+      .all(windowStartIso) as DueWebAlarmRow[];
+  } catch (error) {
+    console.error("Falha ao buscar alarmes web (tabela ainda não existe?):", error);
+    return [];
+  }
+}
+
+function markDiscordNotified(alarmId: number): void {
+  db.prepare(`UPDATE alarms SET discord_notified_at = datetime('now') WHERE id = ?`).run(alarmId);
+}
+
+function clearDeadWebhook(alarmId: number, webhookUrl: string): void {
+  db.prepare(`UPDATE users SET discord_webhook_url = NULL WHERE discord_webhook_url = ?`).run(
+    webhookUrl,
+  );
+  console.error(`Webhook do Discord inválido/removido, limpo para o alarme ${alarmId}.`);
+}
+
+async function sendDiscordAlert(alarm: DueWebAlarmRow): Promise<void> {
+  const base = alarm.weight_class
+    ? `🔴 **${alarm.fighter_red_name} vs ${alarm.fighter_blue_name}** está ao vivo agora! (${alarm.weight_class} — ${alarm.event_title})`
+    : `🔴 **${alarm.fighter_red_name} vs ${alarm.fighter_blue_name}** está ao vivo agora! (${alarm.event_title})`;
+  const mentionEveryone = alarm.discord_mention_everyone === 1;
+  const content = mentionEveryone ? `@everyone ${base}` : base;
+
+  try {
+    const res = await fetch(alarm.discord_webhook_url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content,
+        // Discord silently drops @everyone/@here in content unless the
+        // sender explicitly opts back in here — without this, the mention
+        // is just inert text even when the user asked for it.
+        allowed_mentions: mentionEveryone ? { parse: ["everyone"] } : { parse: [] },
+      }),
+    });
+    if (res.status === 404) {
+      // Webhook was deleted on the Discord side — clear it so future ticks
+      // skip this user cheaply instead of retrying every cycle.
+      clearDeadWebhook(alarm.id, alarm.discord_webhook_url);
+      return;
+    }
+    if (!res.ok) {
+      throw new Error(`Discord respondeu ${res.status}`);
+    }
+    markDiscordNotified(alarm.id);
+  } catch (error) {
+    console.error(`Falha ao enviar alerta do Discord (alarme ${alarm.id}):`, error);
+  }
+}
+
+// Unifies mobile push (device-based) and Discord (web-account-based) alarms
+// under one shape so tick() can group both by event_slug and share a single
+// Cito poll per slug, regardless of how many different delivery channels
+// are waiting on that same bout going live.
+interface AlarmTarget {
+  eventSlug: string;
+  eventStartsAt: string;
+  fighterRedName: string;
+  fighterBlueName: string;
+  dispatch(): Promise<void>;
+}
+
+function toPushTarget(alarm: DueAlarmRow): AlarmTarget {
+  return {
+    eventSlug: alarm.event_slug,
+    eventStartsAt: alarm.event_starts_at,
+    fighterRedName: alarm.fighter_red_name,
+    fighterBlueName: alarm.fighter_blue_name,
+    dispatch: () => sendAlarmPush(alarm),
+  };
+}
+
+function toDiscordTarget(alarm: DueWebAlarmRow): AlarmTarget {
+  return {
+    eventSlug: alarm.event_slug,
+    eventStartsAt: alarm.event_starts_at,
+    fighterRedName: alarm.fighter_red_name,
+    fighterBlueName: alarm.fighter_blue_name,
+    dispatch: () => sendDiscordAlert(alarm),
+  };
+}
+
 function clearDeadToken(deviceId: string): void {
   db.prepare(`UPDATE devices SET fcm_token = NULL WHERE device_id = ?`).run(deviceId);
 }
@@ -235,30 +363,36 @@ const lastCitoCallAtBySlug = new Map<string, number>();
 
 async function tick(): Promise<void> {
   const now = new Date();
-  const due = getDueAlarms(now);
-  if (due.length === 0) return;
+  const dueDeviceAlarms = getDueAlarms(now);
+  const dueWebAlarms = getDueWebAlarms(now);
+  if (dueDeviceAlarms.length === 0 && dueWebAlarms.length === 0) return;
 
   const forcedIds = getForcedLiveIds();
-  const forced = due.filter((alarm) => forcedIds.has(alarm.id));
-  const needsRealCheck = due.filter((alarm) => !forcedIds.has(alarm.id));
+  const forcedDeviceAlarms = dueDeviceAlarms.filter((alarm) => forcedIds.has(alarm.id));
+  const needsRealCheck: AlarmTarget[] = [
+    ...dueDeviceAlarms.filter((alarm) => !forcedIds.has(alarm.id)).map(toPushTarget),
+    ...dueWebAlarms.map(toDiscordTarget),
+  ];
 
-  await Promise.all(forced.map(sendAlarmPush));
+  await Promise.all(forcedDeviceAlarms.map(sendAlarmPush));
 
-  const alarmsBySlug = new Map<string, DueAlarmRow[]>();
-  for (const alarm of needsRealCheck) {
-    const list = alarmsBySlug.get(alarm.event_slug);
+  const targetsBySlug = new Map<string, AlarmTarget[]>();
+  for (const target of needsRealCheck) {
+    const list = targetsBySlug.get(target.eventSlug);
     if (list) {
-      list.push(alarm);
+      list.push(target);
     } else {
-      alarmsBySlug.set(alarm.event_slug, [alarm]);
+      targetsBySlug.set(target.eventSlug, [target]);
     }
   }
 
-  // Every alarm for a slug shares that event's single event_starts_at, so
-  // the tier and its cooldown are decided once per slug, not per row.
-  const slugsToCheck = [...alarmsBySlug.entries()]
-    .filter(([slug, alarms]) => {
-      const tier = tierFor(alarms[0].event_starts_at, now);
+  // Every target for a slug shares that event's single event_starts_at, so
+  // the tier and its cooldown are decided once per slug, not per row — and
+  // shared across channels, so a mobile push alarm and a Discord alarm on
+  // the same event only cost one Cito call between them, not two.
+  const slugsToCheck = [...targetsBySlug.entries()]
+    .filter(([slug, targets]) => {
+      const tier = tierFor(targets[0].eventStartsAt, now);
       if (tier === "hot") return true;
       const lastCall = lastCitoCallAtBySlug.get(slug) ?? 0;
       return now.getTime() - lastCall >= POLL_INTERVAL_MS_BY_TIER[tier];
@@ -275,18 +409,18 @@ async function tick(): Promise<void> {
     ),
   );
 
-  for (const [slug, alarms] of alarmsBySlug) {
+  for (const [slug, targets] of targetsBySlug) {
     if (!statusBySlug.has(slug)) continue; // not due for a refresh at its current tier yet
 
     const eventData = statusBySlug.get(slug);
-    for (const alarm of alarms) {
+    for (const target of targets) {
       const bout = findLiveTrackingByFighterNames(
         eventData?.tracking,
-        alarm.fighter_red_name,
-        alarm.fighter_blue_name,
+        target.fighterRedName,
+        target.fighterBlueName,
       );
       if (bout?.status === "live") {
-        await sendAlarmPush(alarm);
+        await target.dispatch();
       }
     }
   }

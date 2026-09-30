@@ -13,6 +13,8 @@ export interface SafeUser {
   notifyWhatsapp: boolean;
   notifyDiscord: boolean;
   notifyTelegram: boolean;
+  discordWebhookUrl: string | null;
+  discordMentionEveryone: boolean;
 }
 
 interface UserRow {
@@ -25,6 +27,8 @@ interface UserRow {
   notify_whatsapp: number;
   notify_discord: number;
   notify_telegram: number;
+  discord_webhook_url: string | null;
+  discord_mention_everyone: number;
 }
 
 export const getCurrentUser = cache(async (): Promise<SafeUser | null> => {
@@ -34,7 +38,8 @@ export const getCurrentUser = cache(async (): Promise<SafeUser | null> => {
   const row = db
     .prepare(
       `SELECT id, email, preferred_name, phone, show_extra_events,
-              notify_site, notify_whatsapp, notify_discord, notify_telegram
+              notify_site, notify_whatsapp, notify_discord, notify_telegram,
+              discord_webhook_url, discord_mention_everyone
        FROM users WHERE id = ?`,
     )
     .get(session.userId) as UserRow | undefined;
@@ -51,5 +56,7 @@ export const getCurrentUser = cache(async (): Promise<SafeUser | null> => {
     notifyWhatsapp: Boolean(row.notify_whatsapp),
     notifyDiscord: Boolean(row.notify_discord),
     notifyTelegram: Boolean(row.notify_telegram),
+    discordWebhookUrl: row.discord_webhook_url,
+    discordMentionEveryone: Boolean(row.discord_mention_everyone),
   };
 });
