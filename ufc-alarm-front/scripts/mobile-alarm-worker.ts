@@ -4,10 +4,14 @@
  * Runs as its own long-lived process (see docker-compose.yml's `worker`
  * service), separate from the Next.js `web` process, because Next.js route
  * handlers only run in response to a request and can't host a persistent
- * polling loop. Every ~60s it looks for device_alarms whose fight might have
- * just gone live, checks Cito, and pushes an FCM data message to the
- * device so the Flutter app can ring an alarm-style local notification even
- * if the app is fully closed.
+ * polling loop. Every tick (MOBILE_ALARM_WORKER_INTERVAL_MS) it looks at
+ * every device_alarm that hasn't fired yet, but only actually calls Cito as
+ * often as its event's proximity to go-live warrants — dormant (days/weeks
+ * out) events are checked once an hour just to notice card changes, warm
+ * (1-4h out) events every few minutes, and hot (<1h out through the
+ * post-event grace window) events on every tick, since a bout could go live
+ * any moment. This keeps quota usage low for events nobody's about to watch
+ * yet without ever going fully silent on them. See tierFor/tick below.
  *
  * Cannot import lib/db.ts or lib/mobile/queries.ts directly — they're
  * guarded by `import "server-only"`, which throws outside the Next.js
@@ -22,7 +26,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { initializeApp, cert } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
-import { getLiveWindowBounds } from "../lib/shared/alarmWindow";
+import { ALARM_LIVE_WINDOW_POST_HOURS, ALARM_LIVE_WINDOW_PRE_MINUTES } from "../lib/shared/alarmWindow";
 import { findLiveTrackingByFighterNames, getLiveEventStatus } from "../lib/shared/citoLiveFetch";
 
 // --- Minimal .env.local loader -------------------------------------------
@@ -91,26 +95,34 @@ interface DueAlarmRow {
   event_slug: string;
   bout_id: string;
   event_title: string;
+  event_starts_at: string;
   weight_class: string | null;
   fighter_red_name: string;
   fighter_blue_name: string;
 }
 
+// Only a lower bound on event_starts_at (events that ended too long ago to
+// still be worth checking) — no upper bound. A dormant alarm set weeks
+// ahead of its event is still cheap to pull out of SQLite; tick()'s tiering
+// is what keeps far-future events from costing a real Cito call on every
+// tick, so there's no need to also hide them from this query.
 function getDueAlarms(now: Date): DueAlarmRow[] {
-  const { windowStartIso, windowEndIso } = getLiveWindowBounds(now);
+  const windowStartIso = new Date(
+    now.getTime() - ALARM_LIVE_WINDOW_POST_HOURS * 3_600_000,
+  ).toISOString();
   return db
     .prepare(
       `SELECT da.id, da.device_id, d.fcm_token, da.event_slug, da.bout_id,
-              da.event_title, da.weight_class, da.fighter_red_name, da.fighter_blue_name
+              da.event_title, da.event_starts_at, da.weight_class,
+              da.fighter_red_name, da.fighter_blue_name
        FROM device_alarms da
        JOIN devices d ON d.device_id = da.device_id
        WHERE da.notified_at IS NULL
          AND d.fcm_token IS NOT NULL
          AND da.event_starts_at IS NOT NULL
-         AND da.event_starts_at >= ?
-         AND da.event_starts_at <= ?`,
+         AND da.event_starts_at >= ?`,
     )
-    .all(windowStartIso, windowEndIso) as DueAlarmRow[];
+    .all(windowStartIso) as DueAlarmRow[];
 }
 
 function markNotified(alarmId: number): void {
@@ -179,6 +191,48 @@ function getForcedLiveIds(): Set<number> {
   );
 }
 
+// How long before an event's advertised start a slug goes "hot" — poll
+// every tick, since a bout could go live any moment. Once hot, a slug stays
+// hot through the rest of its due window (getDueAlarms already caps that at
+// ALARM_LIVE_WINDOW_POST_HOURS after start) — we only need to ease off
+// before start, not after.
+const HOT_WINDOW_PRE_MS = 60 * 60_000;
+
+// Below HOT but within ALARM_LIVE_WINDOW_PRE_MINUTES (the same "early
+// prelims can start hours early" boundary getDueAlarms/getLiveWindowBounds
+// already use elsewhere) a slug is "warm" — the event isn't close enough to
+// be worth tick-by-tick polling, but is close enough that it's worth
+// checking every few minutes.
+const WARM_WINDOW_PRE_MS = ALARM_LIVE_WINDOW_PRE_MINUTES * 60_000;
+const WARM_POLL_INTERVAL_MS =
+  Number(process.env.MOBILE_ALARM_WORKER_WARM_INTERVAL_MS) || 5 * 60_000;
+
+// Beyond that, a slug is "dormant" — days or weeks out, nothing is live and
+// nothing will be for a while, but we still check once in a while so a
+// card change (a bout pulled, a fighter swapped) doesn't sit undetected for
+// the entire dormant period.
+const DORMANT_POLL_INTERVAL_MS =
+  Number(process.env.MOBILE_ALARM_WORKER_DORMANT_INTERVAL_MS) || 60 * 60_000;
+
+type PollTier = "hot" | "warm" | "dormant";
+
+function tierFor(eventStartsAtIso: string, now: Date): PollTier {
+  const msToStart = new Date(eventStartsAtIso).getTime() - now.getTime();
+  if (msToStart <= HOT_WINDOW_PRE_MS) return "hot";
+  if (msToStart <= WARM_WINDOW_PRE_MS) return "warm";
+  return "dormant";
+}
+
+const POLL_INTERVAL_MS_BY_TIER: Record<Exclude<PollTier, "hot">, number> = {
+  warm: WARM_POLL_INTERVAL_MS,
+  dormant: DORMANT_POLL_INTERVAL_MS,
+};
+
+// Per-slug timestamp of the last real Cito call, kept in memory for the
+// life of this long-running process — resets on redeploy, which just means
+// the first tick after a restart treats every non-hot slug as due again.
+const lastCitoCallAtBySlug = new Map<string, number>();
+
 async function tick(): Promise<void> {
   const now = new Date();
   const due = getDueAlarms(now);
@@ -190,22 +244,50 @@ async function tick(): Promise<void> {
 
   await Promise.all(forced.map(sendAlarmPush));
 
-  const slugs = [...new Set(needsRealCheck.map((alarm) => alarm.event_slug))];
+  const alarmsBySlug = new Map<string, DueAlarmRow[]>();
+  for (const alarm of needsRealCheck) {
+    const list = alarmsBySlug.get(alarm.event_slug);
+    if (list) {
+      list.push(alarm);
+    } else {
+      alarmsBySlug.set(alarm.event_slug, [alarm]);
+    }
+  }
+
+  // Every alarm for a slug shares that event's single event_starts_at, so
+  // the tier and its cooldown are decided once per slug, not per row.
+  const slugsToCheck = [...alarmsBySlug.entries()]
+    .filter(([slug, alarms]) => {
+      const tier = tierFor(alarms[0].event_starts_at, now);
+      if (tier === "hot") return true;
+      const lastCall = lastCitoCallAtBySlug.get(slug) ?? 0;
+      return now.getTime() - lastCall >= POLL_INTERVAL_MS_BY_TIER[tier];
+    })
+    .map(([slug]) => slug);
+
+  for (const slug of slugsToCheck) {
+    lastCitoCallAtBySlug.set(slug, now.getTime());
+  }
+
   const statusBySlug = new Map(
     await Promise.all(
-      slugs.map(async (slug) => [slug, await getLiveEventStatus(slug)] as const),
+      slugsToCheck.map(async (slug) => [slug, await getLiveEventStatus(slug)] as const),
     ),
   );
 
-  for (const alarm of needsRealCheck) {
-    const eventData = statusBySlug.get(alarm.event_slug);
-    const bout = findLiveTrackingByFighterNames(
-      eventData?.tracking,
-      alarm.fighter_red_name,
-      alarm.fighter_blue_name,
-    );
-    if (bout?.status === "live") {
-      await sendAlarmPush(alarm);
+  for (const [slug, alarms] of alarmsBySlug) {
+    if (!statusBySlug.has(slug)) continue; // not due for a refresh at its current tier yet
+
+    const eventData = statusBySlug.get(slug);
+    for (const alarm of alarms) {
+      const bout = findLiveTrackingByFighterNames(
+        eventData?.tracking,
+        alarm.fighter_red_name,
+        alarm.fighter_blue_name,
+      );
+      if (bout?.status === "live") {
+        await sendAlarmPush(alarm);
+      }
     }
   }
 }
