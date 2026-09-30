@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'local_notifications_service.dart';
+import 'notification_debug_log.dart';
 
 /// Handles an FCM data message while the app is backgrounded OR fully
 /// terminated — Android wakes (or spins up) a background isolate just for
@@ -18,6 +19,12 @@ import 'local_notifications_service.dart';
 /// path (FirebaseMessaging.onMessage, see fcm_service.dart) shows.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Stamped before anything else, including Firebase.initializeApp() —
+  // if the OS never wakes the app for the message at all, this line never
+  // runs and NotificationDebugLog.readAll() will show backgroundWakeAt as
+  // stale/null, pointing at a system-level delivery block rather than a
+  // bug in what follows.
+  await NotificationDebugLog.recordBackgroundWake();
   await Firebase.initializeApp();
   if (message.data['type'] != 'alarm_live') return;
   final payload = AlarmNotificationPayload.fromDataMap(message.data);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/notifications/notification_debug_log.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/error_state_view.dart';
 import '../../providers/alarms_providers.dart';
@@ -84,8 +85,77 @@ class MyAlarmsScreen extends ConsumerWidget {
               },
             ),
           ),
+          const _NotificationDebugPanel(),
         ],
       ),
+    );
+  }
+}
+
+/// Temporary diagnostic panel while investigating pushes that the backend
+/// confirms sending but that never visibly reach the device (see
+/// NotificationDebugLog) — no ADB needed, just open this screen after a
+/// test push. Safe to delete once the delivery issue is root-caused.
+class _NotificationDebugPanel extends StatefulWidget {
+  const _NotificationDebugPanel();
+
+  @override
+  State<_NotificationDebugPanel> createState() => _NotificationDebugPanelState();
+}
+
+class _NotificationDebugPanelState extends State<_NotificationDebugPanel> {
+  late Future<Map<String, String?>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = NotificationDebugLog.readAll();
+  }
+
+  String _fmt(String? iso) => iso ?? 'nunca';
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, String?>>(
+      future: _future,
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          color: AppColors.surfaceRaised,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'DEBUG · entrega de push',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, size: 18),
+                    onPressed: () => setState(() => _future = NotificationDebugLog.readAll()),
+                  ),
+                ],
+              ),
+              if (data != null) ...[
+                Text('Acordou em background: ${_fmt(data['backgroundWakeAt'])}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                Text('Mensagem em foreground: ${_fmt(data['foregroundMessageAt'])}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                Text('Alarme exibido: ${_fmt(data['alarmShownAt'])}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                Text('Falha ao exibir: ${_fmt(data['alarmShowFailedAt'])}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }

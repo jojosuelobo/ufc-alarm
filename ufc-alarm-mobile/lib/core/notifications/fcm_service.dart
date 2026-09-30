@@ -1,6 +1,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../api/mobile_alarms_api.dart';
 import 'local_notifications_service.dart';
+import 'notification_debug_log.dart';
 
 /// Thin wrapper around firebase_messaging: permission + token registration,
 /// foreground message handling, and reading the message (if any) that
@@ -29,6 +30,7 @@ class FcmService {
   /// shows, unifying both code paths on LocalNotificationsService.
   void listenForegroundMessages() {
     FirebaseMessaging.onMessage.listen((message) async {
+      await NotificationDebugLog.recordForegroundMessage();
       if (message.data['type'] != 'alarm_live') return;
       await LocalNotificationsService.instance
           .showAlarmNotification(AlarmNotificationPayload.fromDataMap(message.data));

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'notification_debug_log.dart';
 
 /// Payload carried by an alarm-style local notification — mirrors the data
 /// keys the backend worker sends in its FCM data message (see
@@ -136,13 +137,19 @@ class LocalNotificationsService {
       ],
     );
 
-    await _plugin.show(
-      id: payload.alarmId.hashCode,
-      title: title,
-      body: body,
-      notificationDetails: NotificationDetails(android: details),
-      payload: payload.toJsonString(),
-    );
+    try {
+      await _plugin.show(
+        id: payload.alarmId.hashCode,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(android: details),
+        payload: payload.toJsonString(),
+      );
+      await NotificationDebugLog.recordAlarmShown();
+    } catch (_) {
+      await NotificationDebugLog.recordAlarmShowFailed();
+      rethrow;
+    }
   }
 
   Future<void> cancelAlarmNotification(String alarmId) async {
