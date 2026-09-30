@@ -151,6 +151,9 @@ class _NotificationDebugPanelState extends State<_NotificationDebugPanel> {
                     style: const TextStyle(fontSize: 11, color: AppColors.muted)),
                 Text('Falha ao exibir: ${_fmt(data['alarmShowFailedAt'])}',
                     style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                if (data['alarmShowError'] != null)
+                  Text('Erro: ${data['alarmShowError']}',
+                      style: const TextStyle(fontSize: 11, color: AppColors.accent)),
               ],
             ],
           ),

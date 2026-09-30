@@ -13,11 +13,21 @@ class NotificationDebugLog {
   static const _kForegroundMessageKey = 'debug_last_foreground_message_at';
   static const _kAlarmShownKey = 'debug_last_alarm_shown_at';
   static const _kAlarmShowFailedKey = 'debug_last_alarm_show_failed_at';
+  static const _kAlarmShowErrorKey = 'debug_last_alarm_show_error';
 
   static Future<void> recordBackgroundWake() => _record(_kBackgroundWakeKey);
   static Future<void> recordForegroundMessage() => _record(_kForegroundMessageKey);
   static Future<void> recordAlarmShown() => _record(_kAlarmShownKey);
-  static Future<void> recordAlarmShowFailed() => _record(_kAlarmShowFailedKey);
+
+  static Future<void> recordAlarmShowFailed(Object error) async {
+    await _record(_kAlarmShowFailedKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kAlarmShowErrorKey, error.toString());
+    } catch (_) {
+      // Diagnostic-only — must never take down the real notification flow.
+    }
+  }
 
   static Future<void> _record(String key) async {
     try {
@@ -35,6 +45,7 @@ class NotificationDebugLog {
       'foregroundMessageAt': prefs.getString(_kForegroundMessageKey),
       'alarmShownAt': prefs.getString(_kAlarmShownKey),
       'alarmShowFailedAt': prefs.getString(_kAlarmShowFailedKey),
+      'alarmShowError': prefs.getString(_kAlarmShowErrorKey),
     };
   }
 }

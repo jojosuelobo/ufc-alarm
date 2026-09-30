@@ -146,8 +146,8 @@ class LocalNotificationsService {
         payload: payload.toJsonString(),
       );
       await NotificationDebugLog.recordAlarmShown();
-    } catch (_) {
-      await NotificationDebugLog.recordAlarmShowFailed();
+    } catch (error) {
+      await NotificationDebugLog.recordAlarmShowFailed(error);
       rethrow;
     }
   }
