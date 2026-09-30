@@ -14,6 +14,7 @@ export const config = {
     required("CITO_API_KEY"),
     process.env.CITO_API_KEY_FALLBACK,
     process.env.CITO_API_KEY_FALLBACK_2,
+    process.env.CITO_API_KEY_FALLBACK_3,
   ].filter((key): key is string => Boolean(key)),
   internalKey: required("MIDDLEWARE_INTERNAL_KEY"),
   citoBaseUrl: process.env.CITO_BASE_URL || "https://api.citoapi.com",
