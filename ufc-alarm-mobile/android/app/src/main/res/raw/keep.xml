@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  R8's resource shrinker only sees references from XML/Java/Kotlin. This raw
+  resource is referenced solely by name from Dart
+  (RawResourceAndroidNotificationSound('alarm_sound')), so without this keep
+  rule it gets stripped from release builds even though it's actually used.
+  See: https://developer.android.com/studio/build/shrink-code#keep-resources
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/alarm_sound" />
