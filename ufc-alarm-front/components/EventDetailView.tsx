@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import type { UpcomingEvent } from "@/types/domain";
 import EventCountdown from "./EventCountdown";
 import FightCard from "./FightCard";
@@ -94,8 +95,8 @@ export default function EventDetailView({
     };
   }
 
-  return (
-    <div className="mx-auto max-w-5xl px-6 pb-20 pt-10 sm:px-10 sm:pt-14 lg:px-16">
+  const heroContent = (
+    <>
       <p className="text-base font-semibold uppercase tracking-widest text-accent">
         {event.dateLabel ?? "Data a confirmar"}
       </p>
@@ -105,10 +106,31 @@ export default function EventDetailView({
       {event.location && (
         <p className="mt-3 text-lg text-muted">{event.location}</p>
       )}
-
-      <div className="mt-10">
+      <div className="mt-8">
         <EventCountdown targetDate={event.date} isLive={isEventLive} />
       </div>
+    </>
+  );
+
+  return (
+    <div className="mx-auto max-w-5xl px-6 pb-20 sm:px-10 lg:px-16">
+      {event.posterUrl ? (
+        <div className="relative -mx-6 flex min-h-[340px] flex-col justify-end overflow-hidden p-6 sm:-mx-10 sm:min-h-[440px] sm:p-10 lg:-mx-16 lg:min-h-[500px] lg:p-16">
+          <Image
+            src={event.posterUrl}
+            alt={event.title}
+            fill
+            sizes="100vw"
+            className="-z-10 object-cover"
+            priority
+            draggable={false}
+          />
+          <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/70 to-background/20" />
+          {heroContent}
+        </div>
+      ) : (
+        <div className="pt-10 sm:pt-14">{heroContent}</div>
+      )}
 
       {event.mainEvent ? (
         <div className="mt-14 border-t border-border pt-10">
@@ -132,10 +154,11 @@ export default function EventDetailView({
         <section className="mt-16">
           <SectionLabel>Card principal</SectionLabel>
           <div className="mt-2 divide-y divide-border">
-            {event.mainCard.map((fight) => (
+            {event.mainCard.map((fight, index) => (
               <FightCard
                 key={fight.boutId}
                 fight={fight}
+                alternate={index % 2 === 1}
                 {...liveDataFor(fight.boutId)}
                 {...bellProps}
               />
@@ -148,10 +171,11 @@ export default function EventDetailView({
         <section className="mt-16">
           <SectionLabel>Preliminares</SectionLabel>
           <div className="mt-2 divide-y divide-border">
-            {event.prelimCard.map((fight) => (
+            {event.prelimCard.map((fight, index) => (
               <FightCard
                 key={fight.boutId}
                 fight={fight}
+                alternate={index % 2 === 1}
                 {...liveDataFor(fight.boutId)}
                 {...bellProps}
               />

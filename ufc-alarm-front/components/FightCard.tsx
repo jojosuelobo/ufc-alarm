@@ -6,6 +6,10 @@ import NotificationBellButton from "./NotificationBellButton";
 interface FightCardProps {
   fight: Fight;
   highlight?: boolean;
+  /** Alternates a subtle background tone between fights in a list, so
+   * adjacent fights are easier to tell apart at a glance. Ignored when
+   * `highlight` is set (the main event is already visually distinct). */
+  alternate?: boolean;
   isLive?: boolean;
   winnerCorner?: "red" | "blue" | null;
   round?: number | null;
@@ -31,6 +35,8 @@ function FighterBlock({
   size: "sm" | "lg";
   isWinner: boolean;
 }) {
+  const cornerColorClass = fighter.corner === "red" ? "text-corner-red" : "text-corner-blue";
+
   return (
     <div className="flex flex-1 flex-col items-center gap-3 text-center">
       <div className="relative">
@@ -42,12 +48,15 @@ function FighterBlock({
         <FighterAvatar fighter={fighter} size={size} shape="portrait" />
       </div>
       <p
-        className={`font-heading uppercase tracking-tight ${
+        className={`font-heading uppercase tracking-tight ${cornerColorClass} ${
           size === "lg" ? "text-3xl sm:text-4xl" : "text-xl sm:text-2xl"
         }`}
       >
         {fighter.name}
       </p>
+      {fighter.record && (
+        <p className="text-sm font-semibold text-muted">{fighter.record}</p>
+      )}
       {fighter.flagEmoji && fighter.country && (
         <p className="text-base text-muted">
           {fighter.flagEmoji} {fighter.country}
@@ -60,6 +69,7 @@ function FighterBlock({
 export default function FightCard({
   fight,
   highlight = false,
+  alternate = false,
   isLive = false,
   winnerCorner = null,
   round = null,
@@ -76,7 +86,13 @@ export default function FightCard({
   const hasStatsRow = (isLive || isFinished) && (round != null || time || method);
 
   return (
-    <div className={highlight ? "" : "py-10 first:pt-0 last:pb-0"}>
+    <div
+      className={
+        highlight
+          ? ""
+          : `rounded-lg px-4 py-10 first:pt-0 last:pb-0 sm:px-6 ${alternate ? "bg-surface" : ""}`
+      }
+    >
       <div className="mb-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div />
         <div className="flex min-w-0 items-center justify-center gap-2 text-center">

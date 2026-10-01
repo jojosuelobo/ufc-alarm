@@ -65,6 +65,7 @@ export default function FighterAvatar({
         fill
         sizes={IMAGE_SIZES[size]}
         className="object-cover object-top"
+        draggable={false}
       />
     </div>
   );
