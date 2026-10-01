@@ -1,10 +1,12 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/notifications/background_handler.dart';
 import 'core/notifications/local_notifications_service.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/error_state_view.dart';
 import 'features/alarms/alarm_ringing_overlay.dart';
 import 'features/alarms/my_alarms_screen.dart';
 import 'features/events/events_list_screen.dart';
@@ -19,6 +21,22 @@ final navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Safety net for the one class of error ErrorStateView can't cover: a
+  // widget throwing mid-build somewhere outside the four data-loading
+  // screens. Without this, Flutter falls back to its own red/gray error
+  // box instead of anything that looks like this app. Left as Flutter's
+  // default in debug builds on purpose — that default includes the actual
+  // stack trace, which is more useful than our branded message while
+  // developing; only release builds (what real users see) get the swap.
+  if (kReleaseMode) {
+    ErrorWidget.builder = (details) => Material(
+          color: AppColors.background,
+          child: const ErrorStateView(
+            message: 'Algo deu errado ao exibir esta tela.',
+          ),
+        );
+  }
 
   // Firebase (and therefore push notifications) only works once
   // google-services.json has been dropped in and the conditional

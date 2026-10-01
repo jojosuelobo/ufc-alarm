@@ -22,6 +22,7 @@ class EventsListScreen extends ConsumerWidget {
         error: (error, _) => ErrorStateView(
           message: 'Não foi possível carregar os eventos. Tente novamente.',
           onRetry: () => ref.invalidate(upcomingEventsProvider),
+          error: error,
         ),
         data: (events) {
           final groups = groupEventsByPeriod(events);

@@ -20,6 +20,7 @@ class HomeScreen extends ConsumerWidget {
       error: (error, _) => ErrorStateView(
         message: 'Não foi possível carregar o próximo evento. Tente novamente.',
         onRetry: () => ref.invalidate(upcomingEventsProvider),
+        error: error,
       ),
       data: (events) {
         if (events.isEmpty) {
@@ -34,6 +35,7 @@ class HomeScreen extends ConsumerWidget {
           error: (error, _) => ErrorStateView(
             message: 'Não foi possível carregar o evento. Tente novamente.',
             onRetry: () => ref.invalidate(eventDetailProvider(nextSlug)),
+            error: error,
           ),
           data: (event) {
             if (event == null) {

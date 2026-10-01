@@ -22,7 +22,22 @@ class MyAlarmsScreen extends ConsumerWidget {
     final showExtraEvents = ref.watch(showExtraEventsProvider).valueOrNull ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Meus Alarmes')),
+      appBar: AppBar(
+        title: const Text('Meus Alarmes'),
+        actions: [
+          // Deliberately small and unlabeled — this is a diagnostic panel
+          // for push-delivery issues (see NotificationDebugLog), not
+          // something a regular user needs to notice or understand.
+          IconButton(
+            icon: const Icon(Icons.bug_report_outlined, size: 20, color: AppColors.muted),
+            tooltip: 'Diagnóstico de notificações',
+            onPressed: () => showModalBottomSheet(
+              context: context,
+              builder: (_) => const SafeArea(child: _NotificationDebugPanel()),
+            ),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           SwitchListTile(
@@ -44,6 +59,7 @@ class MyAlarmsScreen extends ConsumerWidget {
               error: (error, _) => ErrorStateView(
                 message: 'Não foi possível carregar seus alarmes. Tente novamente.',
                 onRetry: () => ref.invalidate(activeAlarmsProvider),
+                error: error,
               ),
               data: (alarms) {
                 if (alarms.isEmpty) {
@@ -85,7 +101,6 @@ class MyAlarmsScreen extends ConsumerWidget {
               },
             ),
           ),
-          const _NotificationDebugPanel(),
         ],
       ),
     );
@@ -94,8 +109,10 @@ class MyAlarmsScreen extends ConsumerWidget {
 
 /// Temporary diagnostic panel while investigating pushes that the backend
 /// confirms sending but that never visibly reach the device (see
-/// NotificationDebugLog) — no ADB needed, just open this screen after a
-/// test push. Safe to delete once the delivery issue is root-caused.
+/// NotificationDebugLog) — no ADB needed, just tap the bug icon in the app
+/// bar after a test push. Safe to delete once the delivery issue is
+/// root-caused. Shown in a bottom sheet (see the bug IconButton above)
+/// instead of inline so it never confuses a regular user browsing alarms.
 class _NotificationDebugPanel extends StatefulWidget {
   const _NotificationDebugPanel();
 

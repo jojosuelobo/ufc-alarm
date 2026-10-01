@@ -21,6 +21,7 @@ class EventDetailScreen extends ConsumerWidget {
         error: (error, _) => ErrorStateView(
           message: 'Não foi possível carregar o evento. Tente novamente.',
           onRetry: () => ref.invalidate(eventDetailProvider(slug)),
+          error: error,
         ),
         data: (event) {
           if (event == null) {
