@@ -33,7 +33,7 @@ export default function ProfileForm({ user }: { user: SafeUser }) {
       <button
         type="submit"
         disabled={pending}
-        className="mt-2 self-start rounded-md bg-accent px-6 py-2.5 font-heading text-base uppercase tracking-wide text-white disabled:opacity-60"
+        className="mt-2 self-end rounded-md bg-accent px-6 py-2.5 font-heading text-base uppercase tracking-wide text-white disabled:opacity-60"
       >
         {pending ? "Salvando..." : "Salvar"}
       </button>

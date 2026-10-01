@@ -96,86 +96,74 @@ export async function updateProfileAction(
   return;
 }
 
-export async function setPhoneAction(
-  _prevState: AuthActionState,
-  formData: FormData,
-): Promise<AuthActionState> {
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const phoneRaw = String(formData.get("phone") ?? "").trim();
-  const phone = phoneRaw ? phoneRaw.slice(0, 20) : null;
-
-  if (phone && (phone.length < 8 || phone.length > 20)) {
-    return { error: "Telefone inválido." };
-  }
-
-  db.prepare(`UPDATE users SET phone = ? WHERE id = ?`).run(phone, user.id);
-
-  revalidatePath("/minha-conta");
+export interface NotificationPreferencesInput {
+  notifySite: boolean;
+  notifyWhatsapp: boolean;
+  notifyDiscord: boolean;
+  phone: string | null;
+  discordWebhookUrl: string | null;
+  discordMentionEveryone: boolean;
 }
 
-const NOTIFICATION_CHANNEL_COLUMNS = {
-  site: "notify_site",
-  whatsapp: "notify_whatsapp",
-  discord: "notify_discord",
-  telegram: "notify_telegram",
-} as const;
+export type NotificationPreferencesResult = { ok: true } | { ok: false; error: string };
 
-export type NotificationChannel = keyof typeof NOTIFICATION_CHANNEL_COLUMNS;
-
-export async function setNotificationChannelAction(
-  channel: NotificationChannel,
-  enabled: boolean,
-): Promise<{ ok: true } | { ok: false; error?: "no_phone" | "no_webhook" }> {
+// Single save for the whole "como você quer ser notificado?" section — one
+// request, one validation pass, one UPDATE. Replaces what used to be three
+// separate actions (one per toggle, one for phone, one for the webhook)
+// that could leave a channel "on" with its prerequisite field blank (e.g.
+// WhatsApp stays enabled after the phone is cleared, since nothing re-ran
+// the whatsapp-needs-phone check at the time the phone was removed).
+// Validating everything together here means that can't happen.
+export async function saveNotificationPreferencesAction(
+  input: NotificationPreferencesInput,
+): Promise<NotificationPreferencesResult> {
   const user = await getCurrentUser();
   if (!user) {
-    return { ok: false };
+    return { ok: false, error: "unauthenticated" };
   }
 
-  const column = NOTIFICATION_CHANNEL_COLUMNS[channel];
-  if (!column) {
-    return { ok: false };
+  const phoneRaw = input.phone?.trim() ?? "";
+  const phone = phoneRaw ? phoneRaw.slice(0, 20) : null;
+  if (phone && (phone.length < 8 || phone.length > 20)) {
+    return { ok: false, error: "Telefone inválido." };
+  }
+  if (input.notifyWhatsapp && !phone) {
+    return { ok: false, error: "Cadastre um telefone para ativar o WhatsApp." };
   }
 
-  if (channel === "whatsapp" && enabled && !user.phone) {
-    return { ok: false, error: "no_phone" };
+  const webhookRaw = input.discordWebhookUrl?.trim() ?? "";
+  const discordWebhookUrl = webhookRaw || null;
+  if (discordWebhookUrl && !isValidDiscordWebhookUrl(discordWebhookUrl)) {
+    return { ok: false, error: "URL de webhook do Discord inválida." };
   }
-  if (channel === "discord" && enabled && !user.discordWebhookUrl) {
-    return { ok: false, error: "no_webhook" };
+  if (input.notifyDiscord && !discordWebhookUrl) {
+    return { ok: false, error: "Cole a URL de um webhook do Discord para ativar o Discord." };
   }
 
-  db.prepare(`UPDATE users SET ${column} = ? WHERE id = ?`).run(enabled ? 1 : 0, user.id);
+  // notify_telegram is left untouched here on purpose — the Telegram
+  // channel is paused (UI removed, see NotificationPreferencesForm) rather
+  // than deleted, since it needs its own bot + chat-linking flow, not just
+  // a webhook URL like Discord. Existing values stay as they were.
+  db.prepare(
+    `UPDATE users SET
+      notify_site = ?, notify_whatsapp = ?, notify_discord = ?,
+      phone = ?, discord_webhook_url = ?, discord_mention_everyone = ?
+     WHERE id = ?`,
+  ).run(
+    input.notifySite ? 1 : 0,
+    input.notifyWhatsapp ? 1 : 0,
+    input.notifyDiscord ? 1 : 0,
+    phone,
+    discordWebhookUrl,
+    input.discordMentionEveryone ? 1 : 0,
+    user.id,
+  );
 
   revalidatePath("/minha-conta");
+  revalidatePath("/eventos");
+  revalidatePath("/");
 
   return { ok: true };
-}
-
-export async function setDiscordWebhookAction(
-  _prevState: AuthActionState,
-  formData: FormData,
-): Promise<AuthActionState> {
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const raw = String(formData.get("discordWebhookUrl") ?? "").trim();
-  const url = raw || null;
-  const mentionEveryone = formData.get("discordMentionEveryone") === "on";
-
-  if (url && !isValidDiscordWebhookUrl(url)) {
-    return { error: "URL de webhook do Discord inválida." };
-  }
-
-  db.prepare(
-    `UPDATE users SET discord_webhook_url = ?, discord_mention_everyone = ? WHERE id = ?`,
-  ).run(url, mentionEveryone ? 1 : 0, user.id);
-
-  revalidatePath("/minha-conta");
 }
 
 export async function setShowExtraEventsAction(
