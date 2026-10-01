@@ -17,7 +17,7 @@ export default function NotificationPreferencesForm({ user }: { user: SafeUser }
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const whatsappNeedsPhone = notifyWhatsapp && !phone.trim();
+  // const whatsappNeedsPhone = notifyWhatsapp && !phone.trim();
   const discordNeedsWebhook = notifyDiscord && !discordWebhookUrl.trim();
 
   function handleSave() {
@@ -49,6 +49,13 @@ export default function NotificationPreferencesForm({ user }: { user: SafeUser }
         onChange={setNotifySite}
       />
 
+      {/*
+        WhatsApp sending isn't actually implemented yet (no provider wired
+        up server-side, unlike Discord's real webhook) — commented out
+        instead of deleted so it's quick to bring back once that exists.
+        Leaving `notifyWhatsapp`/`phone` state and the save payload as-is
+        means any value a user already saved stays intact, just not
+        editable from this screen for now.
       <div className="flex flex-col gap-3">
         <ToggleSwitch
           label="WhatsApp"
@@ -66,6 +73,7 @@ export default function NotificationPreferencesForm({ user }: { user: SafeUser }
           className="rounded-md border border-border bg-background px-4 py-3 text-base outline-none focus:border-accent"
         />
       </div>
+      */}
 
       <div className="flex flex-col gap-3">
         <ToggleSwitch
