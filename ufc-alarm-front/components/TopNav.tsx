@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { SafeUser } from "@/lib/auth/dal";
+import MobileAppModal from "./MobileAppModal";
 import UserMenuButton from "./UserMenuButton";
 
 const LINKS = [
@@ -12,41 +14,59 @@ const LINKS = [
 
 export default function TopNav({ user }: { user: SafeUser | null }) {
   const pathname = usePathname();
+  const [showMobileAppModal, setShowMobileAppModal] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5 sm:px-10 lg:px-16">
-        <Link href="/" className="font-heading text-3xl uppercase tracking-tight">
-          UFC <span className="text-accent">Alarm</span>
-        </Link>
-        <nav className="flex items-center gap-8">
-          {LINKS.map((link) => {
-            const active =
-              link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`font-heading text-base uppercase tracking-wide transition ${
-                  active ? "text-accent" : "text-muted hover:text-foreground"
-                }`}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
-          {user ? (
-            <UserMenuButton />
-          ) : (
-            <Link
-              href="/login"
+    <>
+      <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5 sm:px-10 lg:px-16">
+          <Link href="/" className="font-heading text-3xl uppercase tracking-tight">
+            UFC <span className="text-accent">Alarm</span>
+          </Link>
+          <nav className="flex items-center gap-8">
+            {LINKS.map((link) => {
+              const active =
+                link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`font-heading text-base uppercase tracking-wide transition ${
+                    active ? "text-accent" : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setShowMobileAppModal(true)}
               className="font-heading text-base uppercase tracking-wide text-muted transition hover:text-foreground"
             >
-              Login
-            </Link>
-          )}
-        </nav>
-      </div>
-    </header>
+              App Android
+            </button>
+            {user ? (
+              <UserMenuButton />
+            ) : (
+              <Link
+                href="/login"
+                className="font-heading text-base uppercase tracking-wide text-muted transition hover:text-foreground"
+              >
+                Login
+              </Link>
+            )}
+          </nav>
+        </div>
+      </header>
+      {/* Rendered as a sibling of <header>, not inside it — that header has
+          backdrop-blur, and an ancestor with a filter/backdrop-filter
+          establishes a new containing block for `position: fixed`
+          descendants, which made the modal position itself relative to the
+          (short, pinned-to-top) header instead of the viewport. */}
+      {showMobileAppModal && (
+        <MobileAppModal onClose={() => setShowMobileAppModal(false)} />
+      )}
+    </>
   );
 }
