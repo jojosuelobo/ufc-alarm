@@ -4,6 +4,15 @@
   <img src="logo.png" alt="UFC Alarm" width="200" />
 </p>
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" /></a>
+  <img src="https://img.shields.io/badge/status-descontinuado-lightgrey.svg" alt="Status: descontinuado" />
+</p>
+
+<p align="center">
+  Alarme pra lutas específicas do UFC — sem precisar ficar checando o card manualmente.
+</p>
+
 Monorepo com três projetos que, juntos, avisam quando uma luta específica do
 UFC está começando — por alarme sonoro no navegador (web) ou push no celular
 (mobile), sem precisar ficar checando o card manualmente.
