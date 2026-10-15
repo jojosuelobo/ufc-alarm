@@ -5,11 +5,6 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" /></a>
-  <img src="https://img.shields.io/badge/status-descontinuado-lightgrey.svg" alt="Status: descontinuado" />
-</p>
-
-<p align="center">
   Alarme pra lutas específicas do UFC — sem precisar ficar checando o card manualmente.
 </p>
 
