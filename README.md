@@ -1,4 +1,8 @@
-# UFC Alarm
+<h1 align="center">UFC Alarm</h1>
+
+<p align="center">
+  <img src="logo.png" alt="UFC Alarm" width="200" />
+</p>
 
 Monorepo com três projetos que, juntos, avisam quando uma luta específica do
 UFC está começando — por alarme sonoro no navegador (web) ou push no celular
