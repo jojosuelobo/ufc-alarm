@@ -259,8 +259,10 @@ Duas credenciais diferentes, pra dois lados diferentes:
 
 1. **`google-services.json`** (identifica o *app Android* pro Firebase) —
    baixa no Firebase Console, projeto → ⚙️ Project Settings → seus apps →
-   Android. Vai em `android/app/google-services.json`. Não é segredo (não
-   tem chave privada), pode ficar versionado.
+   Android. Vai em `android/app/google-services.json`. Não tem chave
+   privada, mas é específico do seu projeto Firebase — por isso é
+   gitignored (cada clone do projeto deve gerar o seu, não reaproveitar o
+   de outra pessoa).
 2. **Chave de Service Account** (dá permissão pro *backend* mandar pushes
    como admin) — Firebase Console → ⚙️ Project Settings → aba "Service
    accounts" → "Generate new private key". **Essa sim é secreta** — vai em
@@ -293,11 +295,13 @@ flutter test      # smoke test do app, com providers mockados (sem rede)
 flutter run       # precisa de device/emulador Android conectado
 ```
 
-O app aponta por padrão pro backend em `http://10.10.10.10:3004`
-(`lib/core/api/api_client.dart`, constante `kApiBaseUrl`) — o endereço da
-VM onde o `ufc-alarm-front` roda via Docker Compose. Rodando num emulador
-Android na própria VM, trocar para `http://10.0.2.2:3004` (alias do
-emulador pro host).
+O app aponta por padrão pro `http://10.0.2.2:3004` (alias do emulador
+Android pro host), ou seja, basta ter o `ufc-alarm-front` rodando
+localmente (`docker compose up` ou `npm run dev`, porta 3004) na mesma
+máquina do emulador pra já funcionar. Pra rodar num device físico ou contra
+um backend em outra máquina/VM, sobrescreva com
+`flutter run --dart-define=API_BASE_URL=http://<ip-ou-dominio>:3004` (ver
+`lib/core/api/api_client.dart`, constante `kApiBaseUrl`).
 
 ## Limitações conhecidas
 
