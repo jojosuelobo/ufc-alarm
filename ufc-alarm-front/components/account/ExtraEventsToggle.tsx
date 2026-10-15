@@ -22,7 +22,7 @@ export default function ExtraEventsToggle({ initialValue }: { initialValue: bool
     <div className="flex items-center justify-between gap-4">
       <div className="min-w-0">
         <p className="text-sm font-semibold uppercase tracking-wide">
-          Exibir eventos extras? (DWCS e Road to UFC)
+          Exibir eventos extras? (Road to UFC)
         </p>
         <p className="mt-0.5 text-sm text-muted">
           Quando desativado, esses eventos não aparecem na listagem.
@@ -37,7 +37,7 @@ export default function ExtraEventsToggle({ initialValue }: { initialValue: bool
         type="button"
         role="switch"
         aria-checked={enabled}
-        aria-label="Exibir eventos extras (DWCS e Road to UFC)"
+        aria-label="Exibir eventos extras (Road to UFC)"
         onClick={handleToggle}
         className={`flex h-6 w-11 shrink-0 items-center rounded-full p-1 transition-colors ${
           enabled ? "bg-accent" : "bg-surface-raised"

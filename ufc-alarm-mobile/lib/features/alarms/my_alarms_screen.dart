@@ -42,7 +42,7 @@ class MyAlarmsScreen extends ConsumerWidget {
         children: [
           SwitchListTile(
             title: const Text(
-              'Exibir eventos extras? (DWCS e Road to UFC)',
+              'Exibir eventos extras? (Road to UFC)',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
             subtitle: const Text(

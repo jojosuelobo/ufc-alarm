@@ -1,5 +1,6 @@
 import { config } from "../config.js";
 import { CitoApiError } from "../errors.js";
+import { getKeyOrder, markKeyAvailable, markKeyBlocked } from "./keyRotation.js";
 
 async function tryFetch(path: string, apiKey: string): Promise<Response> {
   try {
@@ -12,23 +13,27 @@ async function tryFetch(path: string, apiKey: string): Promise<Response> {
 }
 
 /**
- * Tenta cada chave em config.citoApiKeys em ordem, só avançando para a
- * próxima quando a atual esgotou a cota (429) — outras chaves ficam de
- * reserva para quando a principal bate no limite mensal, em vez de
- * derrubar o endpoint até o reset.
+ * Tenta as chaves de config.citoApiKeys na ordem dada por getKeyOrder()
+ * (round-robin por janela de tempo, pulando as já sabidamente bloqueadas —
+ * ver keyRotation.ts), só avançando para a próxima quando a atual esgotou a
+ * cota (429). Qualquer outro erro HTTP é repassado direto, sem tentar as
+ * demais chaves — não é um problema de cota, então trocar de chave não
+ * ajudaria.
  */
 export async function citoGet<T>(path: string): Promise<T> {
-  let res: Response;
-  let apiKey = config.citoApiKeys[0];
-  res = await tryFetch(path, apiKey);
+  let res: Response | undefined;
 
-  for (let i = 1; res.status === 429 && i < config.citoApiKeys.length; i++) {
-    apiKey = config.citoApiKeys[i];
+  for (const apiKey of getKeyOrder()) {
     res = await tryFetch(path, apiKey);
+    if (res.status !== 429) {
+      markKeyAvailable(apiKey);
+      break;
+    }
+    markKeyBlocked(apiKey);
   }
 
-  if (!res.ok) {
-    throw new CitoApiError("A Cito API retornou um erro.", res.status);
+  if (!res || !res.ok) {
+    throw new CitoApiError("A Cito API retornou um erro.", res?.status);
   }
 
   return (await res.json()) as T;

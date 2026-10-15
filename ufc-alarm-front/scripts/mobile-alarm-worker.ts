@@ -36,6 +36,7 @@ import { initializeApp, cert } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
 import { ALARM_LIVE_WINDOW_POST_HOURS, ALARM_LIVE_WINDOW_PRE_MINUTES } from "../lib/shared/alarmWindow";
 import { findLiveTrackingByFighterNames, getLiveEventStatus } from "../lib/shared/citoLiveFetch";
+import { isDwcsEvent } from "../lib/shared/eventFilters";
 
 // --- Minimal .env.local loader -------------------------------------------
 // Next.js auto-loads .env.local for the `web` process; this standalone
@@ -363,8 +364,13 @@ const lastCitoCallAtBySlug = new Map<string, number>();
 
 async function tick(): Promise<void> {
   const now = new Date();
-  const dueDeviceAlarms = getDueAlarms(now);
-  const dueWebAlarms = getDueWebAlarms(now);
+  // DWCS is excluded everywhere (see lib/shared/eventFilters) — filtered
+  // here too, not just at alarm-creation time in the Next.js app, so any
+  // alarm that was already sitting in the DB from before this exclusion
+  // existed stops being polled instead of quietly costing Cito calls
+  // forever.
+  const dueDeviceAlarms = getDueAlarms(now).filter((a) => !isDwcsEvent(a.event_title));
+  const dueWebAlarms = getDueWebAlarms(now).filter((a) => !isDwcsEvent(a.event_title));
   if (dueDeviceAlarms.length === 0 && dueWebAlarms.length === 0) return;
 
   const forcedIds = getForcedLiveIds();

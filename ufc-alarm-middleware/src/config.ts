@@ -7,16 +7,21 @@ function required(name: string): string {
 export const config = {
   port: Number(process.env.PORT) || 3005,
   host: process.env.HOST || "0.0.0.0",
-  // Chaves tentadas em ordem — contas Cito separadas, cada uma com sua
-  // própria cota mensal. Quando a primeira bate no limite (429), a próxima
-  // entra como reserva em vez de derrubar o endpoint até o reset mensal.
+  // Contas Cito separadas, cada uma com sua própria cota mensal. Em vez de
+  // martelar sempre a primeira até ela estourar (ver keyRotation.ts), o uso
+  // é revezado entre todas em janelas de CITO_KEY_ROTATION_INTERVAL_MS, e
+  // qualquer chave que leve 429 fica de fora da rotação até a janela virar
+  // de novo — dilui o uso para reduzir o risco da Cito bloquear uma conta
+  // por estourar limite repetidamente.
   citoApiKeys: [
     required("CITO_API_KEY"),
     process.env.CITO_API_KEY_FALLBACK,
     process.env.CITO_API_KEY_FALLBACK_2,
     process.env.CITO_API_KEY_FALLBACK_3,
   ].filter((key): key is string => Boolean(key)),
+  citoKeyRotationIntervalMs: Number(process.env.CITO_KEY_ROTATION_INTERVAL_MS) || 3_600_000,
   internalKey: required("MIDDLEWARE_INTERNAL_KEY"),
+  discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL,
   citoBaseUrl: process.env.CITO_BASE_URL || "https://api.citoapi.com",
   ttl: {
     eventsMs: Number(process.env.CACHE_TTL_EVENTS_MS) || 3_600_000,
